@@ -8,7 +8,7 @@ $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
 
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "❌ ERROR: This script must be run as Administrator!" -ForegroundColor Red
+    Write-Host "[ERROR] ERROR: This script must be run as Administrator!" -ForegroundColor Red
     exit 1
 }
 
@@ -19,7 +19,7 @@ Write-Host "========================================" -ForegroundColor Cyan
 # Check if AD DS is installed
 $addsStatus = Get-WindowsFeature -Name "AD-Domain-Services" -ErrorAction SilentlyContinue
 if (-not $addsStatus.Installed) {
-    Write-Host "❌ ERROR: AD DS is not installed!" -ForegroundColor Red
+    Write-Host "[ERROR] ERROR: AD DS is not installed!" -ForegroundColor Red
     Write-Host "   Please run Script 2 first to install services." -ForegroundColor Red
     exit 1
 }
@@ -30,15 +30,15 @@ $netbiosName = "DOMLABO"
 $currentYear = (Get-Date).Year
 $dsrmPasswordPlain = "Open@$currentYear*"
 $dsrmPassword = ConvertTo-SecureString $dsrmPasswordPlain -AsPlainText -Force
-$forestLevel = 10
-$domainLevel = 10
+$forestLevel = "Win2012R2"
+$domainLevel = "Win2012R2"
 
 Write-Host "`nDomain Configuration:" -ForegroundColor Yellow
 Write-Host "Domain Name:               $domainName" -ForegroundColor Cyan
 Write-Host "NetBIOS Name:              $netbiosName" -ForegroundColor Cyan
 Write-Host "DSRM Password:             Open@{CurrentYear}* (Open@$currentYear*)" -ForegroundColor Cyan
-Write-Host "Forest Functional Level:   2016 (level 10)" -ForegroundColor Cyan
-Write-Host "Domain Functional Level:   2016 (level 10)" -ForegroundColor Cyan
+Write-Host "Forest Functional Level:   2012 R2 (compatible)" -ForegroundColor Cyan
+Write-Host "Domain Functional Level:   2012 R2 (compatible)" -ForegroundColor Cyan
 
 # Display summary
 Write-Host "`n========================================" -ForegroundColor Cyan
@@ -53,17 +53,17 @@ Write-Host "========================================" -ForegroundColor Cyan
 # Confirmation
 $confirm = Read-Host "`nProceed with domain creation? This will restart the server. (Y/N)"
 if ($confirm -ne "Y" -and $confirm -ne "y") {
-    Write-Host "❌ Configuration cancelled." -ForegroundColor Yellow
+    Write-Host "[ERROR] Configuration cancelled." -ForegroundColor Yellow
     exit 0
 }
 
-Write-Host "`n⏳ Starting domain configuration..." -ForegroundColor Yellow
+Write-Host "`n[WAIT] Starting domain configuration..." -ForegroundColor Yellow
 
 try {
     # Step 1: Install AD DS Deployment Module
     Write-Host "`nStep 1: Loading AD Deployment Module..." -ForegroundColor Cyan
     Import-Module ADDSDeployment -ErrorAction Stop
-    Write-Host "✅ AD Deployment Module loaded" -ForegroundColor Green
+    Write-Host "[OK] AD Deployment Module loaded" -ForegroundColor Green
 
     # Step 2: Promote to Domain Controller
     Write-Host "`nStep 2: Promoting server to Domain Controller..." -ForegroundColor Cyan
@@ -81,26 +81,26 @@ try {
         -Force `
         -ErrorAction Stop
 
-    Write-Host "✅ Domain Controller promotion initiated" -ForegroundColor Green
+    Write-Host "[OK] Domain Controller promotion initiated" -ForegroundColor Green
 
     Write-Host "`n========================================" -ForegroundColor Green
-    Write-Host "✅ Domain configuration completed!" -ForegroundColor Green
+    Write-Host "[OK] Domain configuration completed!" -ForegroundColor Green
     Write-Host "========================================" -ForegroundColor Green
 
-    Write-Host "`n📋 Domain Information:" -ForegroundColor Cyan
+    Write-Host "`nDomain Information:" -ForegroundColor Cyan
     Write-Host "  Domain:      $domainName" -ForegroundColor Green
     Write-Host "  NetBIOS:     $netbiosName" -ForegroundColor Green
     Write-Host "  DC Name:     $env:COMPUTERNAME" -ForegroundColor Green
-    Write-Host "  DNS:         Installed & Configured" -ForegroundColor Green
+    Write-Host "  DNS:         Installed and Configured" -ForegroundColor Green
 
-    Write-Host "`n⚠️  IMPORTANT: Server is restarting..." -ForegroundColor Yellow
-    Write-Host "   After restart, log in with: $netbiosName\Adcipro" -ForegroundColor Yellow
-    Write-Host "   Password: Open@$currentYear*" -ForegroundColor Yellow
+    Write-Host "`nIMPORTANT: Server is restarting..." -ForegroundColor Yellow
+    Write-Host "  After restart, log in with: $netbiosName\Adcipro" -ForegroundColor Yellow
+    Write-Host "  Password: Open@$currentYear*" -ForegroundColor Yellow
 
 }
 catch {
-    Write-Host "`n❌ ERROR: An error occurred during domain configuration:" -ForegroundColor Red
+    Write-Host "`n ERROR: An error occurred during domain configuration:" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
-    Write-Host "`n⚠️  Please review the error and try again." -ForegroundColor Yellow
+    Write-Host "`nPlease review the error and try again." -ForegroundColor Yellow
     exit 1
 }

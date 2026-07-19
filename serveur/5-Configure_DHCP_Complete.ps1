@@ -8,7 +8,7 @@ $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
 
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "❌ ERROR: This script must be run as Administrator!" -ForegroundColor Red
+    Write-Host "[ERROR] ERROR: This script must be run as Administrator!" -ForegroundColor Red
     exit 1
 }
 
@@ -19,7 +19,7 @@ Write-Host "========================================" -ForegroundColor Cyan
 # Check if DHCP is installed
 $dhcpStatus = Get-WindowsFeature -Name "DHCP" -ErrorAction SilentlyContinue
 if (-not $dhcpStatus.Installed) {
-    Write-Host "❌ ERROR: DHCP Server is not installed!" -ForegroundColor Red
+    Write-Host "[ERROR] ERROR: DHCP Server is not installed!" -ForegroundColor Red
     exit 1
 }
 
@@ -86,7 +86,7 @@ foreach ($dept in $departments) {
 # Allow user to override if different
 $override = Read-Host "`nAre these settings correct? (Y/N)"
 if ($override -ne "Y" -and $override -ne "y") {
-    Write-Host "`n✏️  Enter custom settings:" -ForegroundColor Yellow
+    Write-Host "`n[EDIT]  Enter custom settings:" -ForegroundColor Yellow
 
     $customGateway = Read-Host "Enter Gateway IP (current: $defaultGateway)"
     if (-not [string]::IsNullOrWhiteSpace($customGateway)) {
@@ -98,17 +98,17 @@ if ($override -ne "Y" -and $override -ne "y") {
         $domainName = $customDomain
     }
 
-    Write-Host "`n✏️  Department pools are fixed to ensure each department has its own range" -ForegroundColor Cyan
+    Write-Host "`n[EDIT]  Department pools are fixed to ensure each department has its own range" -ForegroundColor Cyan
 }
 
 # Final confirmation
 $confirm = Read-Host "`nProceed with DHCP configuration? (Y/N)"
 if ($confirm -ne "Y" -and $confirm -ne "y") {
-    Write-Host "❌ Configuration cancelled." -ForegroundColor Yellow
+    Write-Host "[ERROR] Configuration cancelled." -ForegroundColor Yellow
     exit 0
 }
 
-Write-Host "`n⏳ Starting DHCP configuration..." -ForegroundColor Yellow
+Write-Host "`n[WAIT] Starting DHCP configuration..." -ForegroundColor Yellow
 
 try {
     # ==================================================
@@ -120,10 +120,10 @@ try {
     $scopeExists = Get-DhcpServerv4Scope -ScopeId $scopeId -ErrorAction SilentlyContinue
 
     if ($scopeExists) {
-        Write-Host "✅ DHCP scope already exists: $scopeId" -ForegroundColor Green
+        Write-Host "[OK] DHCP scope already exists: $scopeId" -ForegroundColor Green
     }
     else {
-        Write-Host "⚠️  DHCP scope not found. Creating..." -ForegroundColor Yellow
+        Write-Host "[WARNING]  DHCP scope not found. Creating..." -ForegroundColor Yellow
         Add-DhcpServerv4Scope `
             -Name "$domainName DHCP Scope" `
             -StartRange "$network.50" `
@@ -132,7 +132,7 @@ try {
             -State Active `
             -ErrorAction Stop
 
-        Write-Host "✅ DHCP scope created: $scopeId ($network.50 - $network.149)" -ForegroundColor Green
+        Write-Host "[OK] DHCP scope created: $scopeId ($network.50 - $network.149)" -ForegroundColor Green
     }
 
     # Step 2: Create exclusions for reserved addresses
@@ -151,7 +151,7 @@ try {
             Add-DhcpServerv4ExclusionRange -ScopeId $scopeId -StartRange $exclusion.Start -EndRange $exclusion.End -ErrorAction SilentlyContinue
         }
     }
-    Write-Host "✅ Exclusions configured (gateway, server, reserved IPs)" -ForegroundColor Green
+    Write-Host "[OK] Exclusions configured (gateway, server, reserved IPs)" -ForegroundColor Green
 
     # Step 3: Configure DHCP Options
     Write-Host "`nStep 3: Configuring DHCP options..." -ForegroundColor Cyan
@@ -163,7 +163,7 @@ try {
         -Value $defaultGateway `
         -ErrorAction Stop
 
-    Write-Host "✅ Option 3 (Gateway): $defaultGateway" -ForegroundColor Green
+    Write-Host "[OK] Option 3 (Gateway): $defaultGateway" -ForegroundColor Green
 
     # Option 6: DNS Servers
     Set-DhcpServerv4OptionValue `
@@ -172,7 +172,7 @@ try {
         -Value $serverIP `
         -ErrorAction Stop
 
-    Write-Host "✅ Option 6 (DNS Server): $serverIP" -ForegroundColor Green
+    Write-Host "[OK] Option 6 (DNS Server): $serverIP" -ForegroundColor Green
 
     # Option 15: Domain Name
     Set-DhcpServerv4OptionValue `
@@ -181,7 +181,7 @@ try {
         -Value $domainName `
         -ErrorAction Stop
 
-    Write-Host "✅ Option 15 (Domain Name): $domainName" -ForegroundColor Green
+    Write-Host "[OK] Option 15 (Domain Name): $domainName" -ForegroundColor Green
 
     # Step 4: Set Lease Duration (Infinite)
     Write-Host "`nStep 4: Configuring lease duration..." -ForegroundColor Cyan
@@ -190,7 +190,7 @@ try {
         -LeaseDuration ([TimeSpan]'36500.00:00:00') `
         -ErrorAction Stop
 
-    Write-Host "✅ Lease duration: Permanent (100 years - effectively infinite)" -ForegroundColor Green
+    Write-Host "[OK] Lease duration: Permanent (100 years - effectively infinite)" -ForegroundColor Green
 
     # ==================================================
     # PART 2: DHCP POLICIES CONFIGURATION
@@ -206,7 +206,7 @@ try {
         $policyExists = Get-DhcpServerv4Policy -ScopeId $scopeId -Name "$($dept.Name) Policy" -ErrorAction SilentlyContinue
 
         if ($policyExists) {
-            Write-Host "  ⚠️  Policy already exists: $($dept.Name)" -ForegroundColor Yellow
+            Write-Host "  [WARNING]  Policy already exists: $($dept.Name)" -ForegroundColor Yellow
         }
         else {
             try {
@@ -236,10 +236,10 @@ try {
                     -EndRange $dept.End `
                     -ErrorAction Stop
 
-                Write-Host "  ✅ Policy created: $($dept.Name) ($($dept.Prefix) → $($dept.Start)-$($dept.End))" -ForegroundColor Green
+                Write-Host "  [OK] Policy created: $($dept.Name) ($($dept.Prefix) → $($dept.Start)-$($dept.End))" -ForegroundColor Green
             }
             catch {
-                Write-Host "  ⚠️  Error creating policy: $($_.Exception.Message)" -ForegroundColor Yellow
+                Write-Host "  [WARNING]  Error creating policy: $($_.Exception.Message)" -ForegroundColor Yellow
             }
         }
 
@@ -259,23 +259,23 @@ try {
             -IPAddress $ipAddress `
             -ErrorAction SilentlyContinue
 
-        Write-Host "✅ DHCP server authorized: $fqdn ($ipAddress)" -ForegroundColor Green
+        Write-Host "[OK] DHCP server authorized: $fqdn ($ipAddress)" -ForegroundColor Green
     }
     catch {
-        Write-Host "⚠️  Could not authorize DHCP server: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "[WARNING]  Could not authorize DHCP server: $($_.Exception.Message)" -ForegroundColor Yellow
     }
 
     # Step 7: Restart DHCP Service
     Write-Host "`nStep 7: Restarting DHCP Service..." -ForegroundColor Cyan
     Restart-Service -Name DHCPServer -Force -ErrorAction Stop
     Start-Sleep -Seconds 2
-    Write-Host "✅ DHCP Service restarted" -ForegroundColor Green
+    Write-Host "[OK] DHCP Service restarted" -ForegroundColor Green
 
     Write-Host "`n========================================" -ForegroundColor Green
-    Write-Host "✅ Complete DHCP configuration finished!" -ForegroundColor Green
+    Write-Host "[OK] Complete DHCP configuration finished!" -ForegroundColor Green
     Write-Host "========================================" -ForegroundColor Green
 
-    Write-Host "`n📋 DHCP Scope Configuration:" -ForegroundColor Cyan
+    Write-Host "`n[INFO] DHCP Scope Configuration:" -ForegroundColor Cyan
     Write-Host "  Scope ID:            $scopeId" -ForegroundColor Green
     Write-Host "  Scope Name:          $domainName DHCP Scope" -ForegroundColor Green
     Write-Host "  Total IP Pool:       $network.50 - $network.149" -ForegroundColor Green
@@ -286,26 +286,26 @@ try {
     Write-Host "  Lease Duration:      Permanent (Never expires)" -ForegroundColor Green
     Write-Host "  Server Status:       Authorized in AD" -ForegroundColor Green
 
-    Write-Host "`n📋 Department DHCP Policies & Pool Allocation:" -ForegroundColor Cyan
+    Write-Host "`n[INFO] Department DHCP Policies & Pool Allocation:" -ForegroundColor Cyan
     foreach ($dept in $departments) {
         Write-Host "  $($dept.Name):" -ForegroundColor Green
         Write-Host "    Condition: Hostname = $($dept.Prefix)" -ForegroundColor Green
         Write-Host "    IP Pool: $($dept.Start) - $($dept.End)" -ForegroundColor Green
     }
 
-    Write-Host "`n💡 Automatic IP Assignment How-To:" -ForegroundColor Yellow
+    Write-Host "`n[TIP] Automatic IP Assignment How-To:" -ForegroundColor Yellow
     Write-Host "  1. Create computer in AD: 'ACC-RECEPTION01'" -ForegroundColor Yellow
     Write-Host "  2. Computer joins domain" -ForegroundColor Yellow
     Write-Host "  3. DHCP policy detects 'ACC-*' prefix" -ForegroundColor Yellow
     Write-Host "  4. Automatically assigns IP from Accueil pool (50-74)" -ForegroundColor Yellow
 
-    Write-Host "`n📝 Computer Naming Convention (IMPORTANT):" -ForegroundColor Yellow
+    Write-Host "`n[NOTE] Computer Naming Convention (IMPORTANT):" -ForegroundColor Yellow
     Write-Host "  ACC-RECEPTION01   → Gets IP from Accueil pool (50-74)" -ForegroundColor Yellow
     Write-Host "  PREV-SAMPLE01     → Gets IP from Prelevement pool (75-99)" -ForegroundColor Yellow
     Write-Host "  TECH-LAB01        → Gets IP from Technicien pool (100-124)" -ForegroundColor Yellow
     Write-Host "  BIO-ANALYSIS01    → Gets IP from Biologiste pool (125-149)" -ForegroundColor Yellow
 
-    Write-Host "`n💡 Next Steps:" -ForegroundColor Yellow
+    Write-Host "`n[TIP] Next Steps:" -ForegroundColor Yellow
     Write-Host "  1. Create computer accounts in Active Directory with proper prefixes" -ForegroundColor Yellow
     Write-Host "  2. Join computers to domain (DOMLABO.LOCAL)" -ForegroundColor Yellow
     Write-Host "  3. Computers automatically receive IPs from their department pool" -ForegroundColor Yellow
@@ -313,7 +313,7 @@ try {
 
 }
 catch {
-    Write-Host "`n❌ ERROR: An error occurred during DHCP configuration:" -ForegroundColor Red
+    Write-Host "`n[ERROR] ERROR: An error occurred during DHCP configuration:" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
     exit 1
 }

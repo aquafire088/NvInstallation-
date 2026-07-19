@@ -1,4 +1,4 @@
-# ----------------------
+﻿# ----------------------
 # Script: Install SQL Server
 # Purpose: Install and configure SQL Server 2019/2022 for medical lab environment
 # ----------------------
@@ -8,7 +8,7 @@ $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
 
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "❌ ERROR: This script must be run as Administrator!" -ForegroundColor Red
+    Write-Host "[ERROR] ERROR: This script must be run as Administrator!" -ForegroundColor Red
     exit 1
 }
 
@@ -47,7 +47,7 @@ Write-Host "Log Path:                  $sqlLogPath" -ForegroundColor Cyan
 Write-Host "Backup Path:               $sqlBackupPath" -ForegroundColor Cyan
 Write-Host "Domain:                    $domainName" -ForegroundColor Cyan
 
-Write-Host "`n📋 SQL Server $sqlVersion $sqlEdition Features:" -ForegroundColor Yellow
+Write-Host "`n[INFO] SQL Server $sqlVersion $sqlEdition Features:" -ForegroundColor Yellow
 Write-Host "  ✓ Database Engine" -ForegroundColor Cyan
 Write-Host "  ✓ SQL Server Management Studio (SSMS)" -ForegroundColor Cyan
 Write-Host "  ✓ SQL Server Agent" -ForegroundColor Cyan
@@ -57,11 +57,11 @@ Write-Host "  ✓ TCP/IP Connectivity" -ForegroundColor Cyan
 # Confirmation
 $confirm = Read-Host "`nInstall SQL Server? (Y/N)"
 if ($confirm -ne "Y" -and $confirm -ne "y") {
-    Write-Host "❌ Installation cancelled." -ForegroundColor Yellow
+    Write-Host "[ERROR] Installation cancelled." -ForegroundColor Yellow
     exit 0
 }
 
-Write-Host "`n⏳ Starting SQL Server installation..." -ForegroundColor Yellow
+Write-Host "`n[WAIT] Starting SQL Server installation..." -ForegroundColor Yellow
 
 try {
     # Step 1: Create folder if it doesn't exist
@@ -69,10 +69,10 @@ try {
 
     if (-not (Test-Path $sqlFolderPath)) {
         New-Item -ItemType Directory -Path $sqlFolderPath -Force -ErrorAction Stop | Out-Null
-        Write-Host "✅ Folder created: $sqlFolderPath" -ForegroundColor Green
+        Write-Host "[OK] Folder created: $sqlFolderPath" -ForegroundColor Green
     }
     else {
-        Write-Host "✅ Folder exists: $sqlFolderPath" -ForegroundColor Green
+        Write-Host "[OK] Folder exists: $sqlFolderPath" -ForegroundColor Green
     }
 
     # Step 2: Check .NET Framework
@@ -80,21 +80,21 @@ try {
     $dotnetStatus = Get-WindowsFeature -Name "NET-Framework-Core" -ErrorAction SilentlyContinue
 
     if ($dotnetStatus.Installed) {
-        Write-Host "✅ .NET Framework 3.5 is installed" -ForegroundColor Green
+        Write-Host "[OK] .NET Framework 3.5 is installed" -ForegroundColor Green
     }
     else {
-        Write-Host "⚠️  .NET Framework 3.5 not found. Installing..." -ForegroundColor Yellow
+        Write-Host "[WARNING]  .NET Framework 3.5 not found. Installing..." -ForegroundColor Yellow
         Install-WindowsFeature -Name "NET-Framework-Core" -ErrorAction SilentlyContinue
-        Write-Host "✅ .NET Framework installed" -ForegroundColor Green
+        Write-Host "[OK] .NET Framework installed" -ForegroundColor Green
     }
 
     # Step 3: Download SQL Server ISO
     Write-Host "`nStep 3: Downloading SQL Server ISO..." -ForegroundColor Cyan
-    Write-Host "⏳ This may take 10-30 minutes depending on your connection..." -ForegroundColor Yellow
+    Write-Host "[WAIT] This may take 10-30 minutes depending on your connection..." -ForegroundColor Yellow
     Write-Host "   Source: $sqlDownloadUrl" -ForegroundColor Gray
 
     if (Test-Path $sqlIsoPath) {
-        Write-Host "✅ ISO already exists: $sqlIsoPath" -ForegroundColor Green
+        Write-Host "[OK] ISO already exists: $sqlIsoPath" -ForegroundColor Green
         $skipDownload = Read-Host "Re-download? (Y/N)"
         if ($skipDownload -ne "Y" -and $skipDownload -ne "y") {
             Write-Host "⏭️  Skipping download, using existing ISO" -ForegroundColor Cyan
@@ -105,10 +105,10 @@ try {
                 Write-Host "Downloading SQL Server ISO..." -ForegroundColor Cyan
                 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
                 Invoke-WebRequest -Uri $sqlDownloadUrl -OutFile $sqlIsoPath -ErrorAction Stop
-                Write-Host "✅ ISO downloaded successfully: $sqlIsoPath" -ForegroundColor Green
+                Write-Host "[OK] ISO downloaded successfully: $sqlIsoPath" -ForegroundColor Green
             }
             catch {
-                Write-Host "❌ ERROR: Failed to download ISO: $($_.Exception.Message)" -ForegroundColor Red
+                Write-Host "[ERROR] ERROR: Failed to download ISO: $($_.Exception.Message)" -ForegroundColor Red
                 exit 1
             }
         }
@@ -118,10 +118,10 @@ try {
             Write-Host "Downloading SQL Server ISO..." -ForegroundColor Cyan
             [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
             Invoke-WebRequest -Uri $sqlDownloadUrl -OutFile $sqlIsoPath -ErrorAction Stop
-            Write-Host "✅ ISO downloaded successfully: $sqlIsoPath" -ForegroundColor Green
+            Write-Host "[OK] ISO downloaded successfully: $sqlIsoPath" -ForegroundColor Green
         }
         catch {
-            Write-Host "❌ ERROR: Failed to download ISO: $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "[ERROR] ERROR: Failed to download ISO: $($_.Exception.Message)" -ForegroundColor Red
             exit 1
         }
     }
@@ -133,15 +133,15 @@ try {
 
     if ($isoDrive) {
         $sqlInstallerPath = "$isoDrive`:\setup.exe"
-        Write-Host "✅ ISO mounted successfully: Drive $isoDrive`:" -ForegroundColor Green
+        Write-Host "[OK] ISO mounted successfully: Drive $isoDrive`:" -ForegroundColor Green
     }
     else {
-        Write-Host "❌ ERROR: Failed to mount ISO" -ForegroundColor Red
+        Write-Host "[ERROR] ERROR: Failed to mount ISO" -ForegroundColor Red
         exit 1
     }
 
     if (-not (Test-Path $sqlInstallerPath)) {
-        Write-Host "❌ ERROR: setup.exe not found in ISO" -ForegroundColor Red
+        Write-Host "[ERROR] ERROR: setup.exe not found in ISO" -ForegroundColor Red
         Dismount-DiskImage -ImagePath $sqlIsoPath
         exit 1
     }
@@ -153,16 +153,16 @@ try {
     foreach ($dir in $directories) {
         if (-not (Test-Path $dir)) {
             New-Item -ItemType Directory -Path $dir -Force -ErrorAction SilentlyContinue | Out-Null
-            Write-Host "✅ Created: $dir" -ForegroundColor Green
+            Write-Host "[OK] Created: $dir" -ForegroundColor Green
         }
         else {
-            Write-Host "✅ Directory exists: $dir" -ForegroundColor Green
+            Write-Host "[OK] Directory exists: $dir" -ForegroundColor Green
         }
     }
 
     # Step 6: Run SQL Server Setup
     Write-Host "`nStep 6: Installing SQL Server..." -ForegroundColor Cyan
-    Write-Host "⏳ This may take 10-20 minutes..." -ForegroundColor Yellow
+    Write-Host "[WAIT] This may take 10-20 minutes..." -ForegroundColor Yellow
 
     # Build installation command
     $installArgs = @(
@@ -190,81 +190,78 @@ try {
             -Wait -PassThru -NoNewWindow
 
         if ($setupProcess.ExitCode -eq 0) {
-            Write-Host "✅ SQL Server installation completed successfully" -ForegroundColor Green
+            Write-Host "[OK] SQL Server installation completed successfully" -ForegroundColor Green
         }
         else {
-            Write-Host "⚠️  SQL Server installation finished with exit code: $($setupProcess.ExitCode)" -ForegroundColor Yellow
+            Write-Host "[WARNING]  SQL Server installation finished with exit code: $($setupProcess.ExitCode)" -ForegroundColor Yellow
             Write-Host "   Check SQL Server error logs for details" -ForegroundColor Yellow
         }
     }
     catch {
-        Write-Host "❌ ERROR: Failed to run SQL Server setup: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "[ERROR] ERROR: Failed to run SQL Server setup: $($_.Exception.Message)" -ForegroundColor Red
     }
 
     # Step 7: Unmount ISO
     Write-Host "`nStep 7: Unmounting ISO..." -ForegroundColor Cyan
     try {
         Dismount-DiskImage -ImagePath $sqlIsoPath -ErrorAction Stop
-        Write-Host "✅ ISO unmounted successfully" -ForegroundColor Green
+        Write-Host "[OK] ISO unmounted successfully" -ForegroundColor Green
     }
     catch {
-        Write-Host "⚠️  Warning: Could not unmount ISO: $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "[WARNING]  Warning: Could not unmount ISO: $($_.Exception.Message)" -ForegroundColor Yellow
     }
 
     # Step 8: Display post-installation instructions
     Write-Host "`n========================================" -ForegroundColor Green
-    Write-Host "✅ SQL Server Installation Completed" -ForegroundColor Green
+    Write-Host "[OK] SQL Server Installation Completed" -ForegroundColor Green
     Write-Host "========================================" -ForegroundColor Green
 
-    Write-Host "`n📋 Installation Summary:" -ForegroundColor Yellow
+    Write-Host "`n[INFO] Installation Summary:" -ForegroundColor Yellow
     Write-Host "  ISO File:              $sqlIsoPath" -ForegroundColor Cyan
     Write-Host "  Setup Executed:        $sqlInstallerPath" -ForegroundColor Cyan
     Write-Host "  Authentication:        $(if ([string]::IsNullOrWhiteSpace($sqlSAPassword)) { 'Windows Only' } else { 'Mixed (Windows + SQL)' })" -ForegroundColor Cyan
     Write-Host "  System Admin Account:  $domainName\Adcipro" -ForegroundColor Cyan
 
-    Write-Host "`n📋 Post-Installation Configuration:" -ForegroundColor Yellow
+    Write-Host "`n[INFO] Post-Installation Configuration:" -ForegroundColor Yellow
     Write-Host "  1. Enable TCP/IP in SQL Server Configuration Manager" -ForegroundColor Yellow
     Write-Host "  2. Enable SQL Server Agent (if not already)" -ForegroundColor Yellow
     Write-Host "  3. Create databases for medical lab:" -ForegroundColor Yellow
-    Write-Host "     - LabDB (Lab Results & Tests)" -ForegroundColor Gray
+    Write-Host "     - LabDB (Lab Results and Tests)" -ForegroundColor Gray
     Write-Host "     - PatientsDB (Patient Information)" -ForegroundColor Gray
     Write-Host "  4. Configure backups" -ForegroundColor Yellow
     Write-Host "  5. Test connectivity from client computers" -ForegroundColor Yellow
 
-    Write-Host "`n🔐 Default Accounts:" -ForegroundColor Yellow
+    Write-Host "`n[SECURITY] Default Accounts:" -ForegroundColor Yellow
     Write-Host "  Windows Authentication: $domainName\Adcipro (Admin)" -ForegroundColor Cyan
     Write-Host "  SQL Authentication: sa (System Administrator - optional)" -ForegroundColor Cyan
 
-    Write-Host "`n💾 SQL Server Directories:" -ForegroundColor Yellow
+    Write-Host "`n[SAVE] SQL Server Directories:" -ForegroundColor Yellow
     Write-Host "  Data Files:   $sqlDataPath" -ForegroundColor Cyan
     Write-Host "  Log Files:    $sqlLogPath" -ForegroundColor Cyan
     Write-Host "  Backups:      $sqlBackupPath" -ForegroundColor Cyan
 
-    Write-Host "`n⚙️  Configuration Manager:" -ForegroundColor Yellow
+    Write-Host "`n[CONFIG] Configuration Manager:" -ForegroundColor Yellow
     Write-Host "  Search for 'SQL Server Configuration Manager' in Windows Start Menu" -ForegroundColor Cyan
     Write-Host "  Configure:" -ForegroundColor Gray
     Write-Host "    1. Services → SQL Server (SQLEXPRESS) - Start mode: Automatic" -ForegroundColor Gray
     Write-Host "    2. SQL Server Network Configuration → Protocols for SQLEXPRESS" -ForegroundColor Gray
     Write-Host "    3. Enable: Named Pipes, TCP/IP" -ForegroundColor Gray
 
-    Write-Host "`n💡 Next Steps:" -ForegroundColor Yellow
+    Write-Host "`n[TIP] Next Steps:" -ForegroundColor Yellow
     Write-Host "  1. Download SQL Server 2019 Express (if not already done)" -ForegroundColor Yellow
     Write-Host "  2. Place installation media in: $sqlMediaPath" -ForegroundColor Yellow
     Write-Host "  3. Use Option 1 or 2 above to install SQL Server" -ForegroundColor Yellow
     Write-Host "  4. Follow Post-Installation Configuration steps" -ForegroundColor Yellow
     Write-Host "  5. Run Script 8 to create lab databases" -ForegroundColor Yellow
 
-    Write-Host "`n📚 Useful SQL Server Commands:" -ForegroundColor Yellow
-    Write-Host "  Connect to server:" -ForegroundColor Gray
-    Write-Host "    sqlcmd -S LOCALHOST\SQLEXPRESS" -ForegroundColor Cyan
-    Write-Host "  Check SQL Server version:" -ForegroundColor Gray
-    Write-Host "    SELECT @@VERSION;" -ForegroundColor Cyan
-    Write-Host "  List all databases:" -ForegroundColor Gray
-    Write-Host "    SELECT name FROM sys.databases;" -ForegroundColor Cyan
-
+    Write-Host "`n[DOCS] Next Steps:" -ForegroundColor Yellow
+    Write-Host "  1. Open SQL Server Configuration Manager" -ForegroundColor Yellow
+    Write-Host "  2. Enable TCP/IP protocol" -ForegroundColor Yellow
+    Write-Host "  3. Start SQL Server service" -ForegroundColor Yellow
+    Write-Host "  4. Test connection with sqlcmd" -ForegroundColor Yellow
 }
 catch {
-    Write-Host "`n❌ ERROR: An error occurred:" -ForegroundColor Red
+    Write-Host "[ERROR] Installation error:" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
     exit 1
 }

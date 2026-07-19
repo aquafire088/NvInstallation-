@@ -49,7 +49,7 @@ $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
 
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Host "❌ ERROR: This script must be run as Administrator!" -ForegroundColor Red
+    Write-Host "[ERROR] ERROR: This script must be run as Administrator!" -ForegroundColor Red
     exit 1
 }
 
@@ -68,24 +68,24 @@ if ([string]::IsNullOrWhiteSpace($newUsername)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($newName)) {
-    Write-Host "❌ Hostname cannot be empty!" -ForegroundColor Red
+    Write-Host "[ERROR] Hostname cannot be empty!" -ForegroundColor Red
     exit 1
 }
 
 if ($newName.Length -gt 15) {
-    Write-Host "❌ Hostname cannot exceed 15 characters!" -ForegroundColor Red
+    Write-Host "[ERROR] Hostname cannot exceed 15 characters!" -ForegroundColor Red
     exit 1
 }
 
 if ($newUsername.Length -gt 20) {
-    Write-Host "❌ Username cannot exceed 20 characters!" -ForegroundColor Red
+    Write-Host "[ERROR] Username cannot exceed 20 characters!" -ForegroundColor Red
     exit 1
 }
 
 # Get IP configuration
 $ip = Read-Host "Enter static IP address"
 if (-not (Test-IPAddress $ip)) {
-    Write-Host "❌ Invalid IP address format!" -ForegroundColor Red
+    Write-Host "[ERROR] Invalid IP address format!" -ForegroundColor Red
     exit 1
 }
 
@@ -96,13 +96,13 @@ if ([string]::IsNullOrWhiteSpace($subnet)) {
 
 $gateway = Read-Host "Enter default gateway"
 if (-not (Test-IPAddress $gateway)) {
-    Write-Host "❌ Invalid gateway address format!" -ForegroundColor Red
+    Write-Host "[ERROR] Invalid gateway address format!" -ForegroundColor Red
     exit 1
 }
 
 $dns1 = Read-Host "Enter primary DNS server"
 if (-not (Test-IPAddress $dns1)) {
-    Write-Host "❌ Invalid primary DNS address format!" -ForegroundColor Red
+    Write-Host "[ERROR] Invalid primary DNS address format!" -ForegroundColor Red
     exit 1
 }
 
@@ -111,7 +111,7 @@ $dns2 = Read-Host "Enter secondary DNS server (optional, press Enter to skip)"
 # Validate secondary DNS if provided
 if (-not [string]::IsNullOrWhiteSpace($dns2)) {
     if (-not (Test-IPAddress $dns2)) {
-        Write-Host "❌ Invalid secondary DNS address format!" -ForegroundColor Red
+        Write-Host "[ERROR] Invalid secondary DNS address format!" -ForegroundColor Red
         exit 1
     }
 }
@@ -121,16 +121,16 @@ Write-Host "`nDetecting network adapter..." -ForegroundColor Yellow
 $adapter = Get-NetAdapter | Where-Object { $_.Status -eq "Up" } | Select-Object -First 1
 
 if (-not $adapter) {
-    Write-Host "❌ No active network adapter found!" -ForegroundColor Red
+    Write-Host "[ERROR] No active network adapter found!" -ForegroundColor Red
     exit 1
 }
 
-Write-Host "✅ Using adapter: $($adapter.Name) (MAC: $($adapter.MacAddress))" -ForegroundColor Green
+Write-Host "[OK] Using adapter: $($adapter.Name) (MAC: $($adapter.MacAddress))" -ForegroundColor Green
 
 # Convert subnet to prefix
 Write-Host "`nProcessing subnet mask..." -ForegroundColor Yellow
 $prefixLength = Convert-SubnetToPrefix $subnet
-Write-Host "✅ Subnet mask converted to /$prefixLength" -ForegroundColor Green
+Write-Host "[OK] Subnet mask converted to /$prefixLength" -ForegroundColor Green
 
 # Display summary
 Write-Host "`n========================================" -ForegroundColor Cyan
@@ -151,34 +151,34 @@ Write-Host "========================================" -ForegroundColor Cyan
 # Confirmation
 $confirm = Read-Host "`nApply these settings and restart? (Y/N)"
 if ($confirm -ne "Y" -and $confirm -ne "y") {
-    Write-Host "❌ Configuration cancelled." -ForegroundColor Yellow
+    Write-Host "[ERROR] Configuration cancelled." -ForegroundColor Yellow
     exit 0
 }
 
-Write-Host "`n⏳ Applying configuration..." -ForegroundColor Yellow
+Write-Host "`n[WAIT] Applying configuration..." -ForegroundColor Yellow
 
 try {
     # Rename computer
     Write-Host "Step 1: Renaming server..." -ForegroundColor Cyan
     Rename-Computer -NewName $newName -Force -ErrorAction Stop
-    Write-Host "✅ Server renamed to: $newName" -ForegroundColor Green
+    Write-Host "[OK] Server renamed to: $newName" -ForegroundColor Green
 
     # Rename user account
     Write-Host "Step 2: Renaming user account..." -ForegroundColor Cyan
     try {
         $adminUser = Get-LocalUser -Name "administrateur" -ErrorAction Stop
         Rename-LocalUser -Name "administrateur" -NewName $newUsername -ErrorAction Stop
-        Write-Host "✅ User account renamed to: $newUsername" -ForegroundColor Green
+        Write-Host "[OK] User account renamed to: $newUsername" -ForegroundColor Green
     }
     catch {
-        Write-Host "⚠️  Warning: Could not rename user account - $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "[WARNING]  Warning: Could not rename user account - $($_.Exception.Message)" -ForegroundColor Yellow
     }
 
     # Remove existing IP addresses
     Write-Host "Step 3: Removing existing IP configuration..." -ForegroundColor Cyan
     Get-NetIPAddress -InterfaceIndex $adapter.IfIndex -AddressFamily IPv4 -ErrorAction SilentlyContinue | 
         Remove-NetIPAddress -Confirm:$false -ErrorAction SilentlyContinue
-    Write-Host "✅ Old IP configuration removed" -ForegroundColor Green
+    Write-Host "[OK] Old IP configuration removed" -ForegroundColor Green
 
     # Remove existing default gateway
     Write-Host "Step 4: Removing existing gateway..." -ForegroundColor Cyan
@@ -191,12 +191,12 @@ try {
                     }
             }
         }
-    Write-Host "✅ Old gateway removed" -ForegroundColor Green
+    Write-Host "[OK] Old gateway removed" -ForegroundColor Green
 
     # Add new IP address with gateway
     Write-Host "Step 5: Configuring new IP address..." -ForegroundColor Cyan
     New-NetIPAddress -InterfaceIndex $adapter.IfIndex -IPAddress $ip -PrefixLength $prefixLength -DefaultGateway $gateway -ErrorAction Stop
-    Write-Host "✅ New IP address configured: $ip/$prefixLength" -ForegroundColor Green
+    Write-Host "[OK] New IP address configured: $ip/$prefixLength" -ForegroundColor Green
 
     # Configure DNS
     Write-Host "Step 6: Configuring DNS servers..." -ForegroundColor Cyan
@@ -205,7 +205,7 @@ try {
         $dnsServers += $dns2
     }
     Set-DnsClientServerAddress -InterfaceIndex $adapter.IfIndex -ServerAddresses $dnsServers -ErrorAction Stop
-    Write-Host "✅ DNS configured: $($dnsServers -join ', ')" -ForegroundColor Green
+    Write-Host "[OK] DNS configured: $($dnsServers -join ', ')" -ForegroundColor Green
 
     # Enable RDP
     Write-Host "Step 7: Enabling Remote Desktop Protocol (RDP)..." -ForegroundColor Cyan
@@ -213,20 +213,20 @@ try {
         # Enable RDP via registry
         $RDPPath = "HKLM:\System\CurrentControlSet\Control\Terminal Server"
         Set-ItemProperty -Path $RDPPath -Name "fDenyTSConnections" -Value 0 -ErrorAction Stop
-        Write-Host "✅ RDP enabled in registry" -ForegroundColor Green
+        Write-Host "[OK] RDP enabled in registry" -ForegroundColor Green
 
         # Enable RDP firewall rule
         Enable-NetFirewallRule -DisplayGroup "Remote Desktop" -ErrorAction SilentlyContinue
-        Write-Host "✅ RDP firewall rule enabled" -ForegroundColor Green
+        Write-Host "[OK] RDP firewall rule enabled" -ForegroundColor Green
     }
     catch {
-        Write-Host "⚠️  Warning: Could not fully enable RDP - $($_.Exception.Message)" -ForegroundColor Yellow
+        Write-Host "[WARNING]  Warning: Could not fully enable RDP - $($_.Exception.Message)" -ForegroundColor Yellow
     }
 
     Write-Host "`n========================================" -ForegroundColor Green
-    Write-Host "✅ Configuration applied successfully!" -ForegroundColor Green
+    Write-Host "[OK] Configuration applied successfully!" -ForegroundColor Green
     Write-Host "========================================" -ForegroundColor Green
-    Write-Host "`n⏳ Restarting server in 10 seconds..." -ForegroundColor Yellow
+    Write-Host "`n[WAIT] Restarting server in 10 seconds..." -ForegroundColor Yellow
     Write-Host "   Press Ctrl+C to cancel restart" -ForegroundColor Yellow
     
     Start-Sleep -Seconds 10
@@ -234,7 +234,7 @@ try {
 
 }
 catch {
-    Write-Host "`n❌ ERROR: An error occurred during configuration:" -ForegroundColor Red
+    Write-Host "`n[ERROR] ERROR: An error occurred during configuration:" -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
     exit 1
 }
