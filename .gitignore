@@ -1,0 +1,26 @@
+# SQL Server ISO files
+*.iso
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Windows
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Sensitive files
+*.password
+*.credentials
+*.key
+*.pem
+
+# Build artifacts
+bin/
+obj/
+dist/
