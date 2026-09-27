@@ -1,0 +1,1225 @@
+<title>Parler de DOMLABO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+  /* ---------- tokens : palette claire complète ---------- */
+  :root {
+    --ground:      #eef2f5;
+    --surface:     #ffffff;
+    --surface-alt: #e4eaef;
+    --ink:         #10202c;
+    --ink-soft:    #3d5163;
+    --muted:       #66798a;
+    --line:        #cbd6de;
+    --line-strong: #a9bac7;
+
+    --accent:      #0d6e78;
+    --accent-soft: #d6eaec;
+    --accent-ink:  #094e55;
+
+    --say:         #9a5314;
+    --say-bg:      #fbf0e4;
+    --say-line:    #e4c19b;
+
+    --code-bg:     #12242f;
+    --code-ink:    #cfe3e6;
+    --code-dim:    #7d97a1;
+
+    --radius: 3px;
+    --measure: 66ch;
+
+    --f-display: "Spectral", Georgia, "Times New Roman", serif;
+    --f-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+
+  /* ---------- tokens : thème sombre (système, sauf choix clair) ---------- */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #0b161d;
+      --surface:     #11212b;
+      --surface-alt: #182f3b;
+      --ink:         #e3edf1;
+      --ink-soft:    #b3c6cf;
+      --muted:       #8199a5;
+      --line:        #27414f;
+      --line-strong: #3c5b6b;
+
+      --accent:      #4fb3bd;
+      --accent-soft: #123840;
+      --accent-ink:  #8ed3da;
+
+      --say:         #e0a26a;
+      --say-bg:      #2a1f14;
+      --say-line:    #6b4a29;
+
+      --code-bg:     #071118;
+      --code-ink:    #cfe3e6;
+      --code-dim:    #6d8794;
+    }
+  }
+
+  /* ---------- tokens : thème sombre explicite ---------- */
+  :root[data-theme="dark"] {
+    --ground:      #0b161d;
+    --surface:     #11212b;
+    --surface-alt: #182f3b;
+    --ink:         #e3edf1;
+    --ink-soft:    #b3c6cf;
+    --muted:       #8199a5;
+    --line:        #27414f;
+    --line-strong: #3c5b6b;
+
+    --accent:      #4fb3bd;
+    --accent-soft: #123840;
+    --accent-ink:  #8ed3da;
+
+    --say:         #e0a26a;
+    --say-bg:      #2a1f14;
+    --say-line:    #6b4a29;
+
+    --code-bg:     #071118;
+    --code-ink:    #cfe3e6;
+    --code-dim:    #6d8794;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 24px 96px;
+  }
+
+  /* ---------- en-tête ---------- */
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 56px 0 32px;
+    border-bottom: 2px solid var(--ink);
+  }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  h1 {
+    font-family: var(--f-display);
+    font-weight: 600;
+    font-size: clamp(2.1rem, 5.5vw, 3.1rem);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .standfirst {
+    font-family: var(--f-display);
+    font-size: 1.15rem;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    max-width: var(--measure);
+    margin: 0;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+    padding-top: 6px;
+  }
+  .meta-row div {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .meta-row b {
+    color: var(--ink);
+    font-weight: 600;
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+  }
+
+  /* ---------- mode d'emploi ---------- */
+  .howto {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin: 32px 0 0;
+  }
+  .howto > div {
+    background: var(--surface);
+    padding: 16px 18px;
+  }
+  .howto h3 {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0 0 6px;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .howto p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  .swatch-say { color: var(--say); font-weight: 600; }
+
+  /* ---------- sommaire ---------- */
+  nav.toc { margin: 40px 0 0; }
+  nav.toc h2 {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 12px;
+    font-weight: 600;
+  }
+  nav.toc ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 2px 24px;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    padding: 7px 0;
+    color: var(--ink);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line);
+    font-size: 14.5px;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    font-family: var(--f-mono);
+    font-size: 11px;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  nav.toc a:hover { color: var(--accent); }
+
+  /* ---------- sections ---------- */
+  section { padding-top: 60px; }
+  .sec-head {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    border-bottom: 1px solid var(--line-strong);
+    padding-bottom: 10px;
+    margin-bottom: 26px;
+  }
+  .sec-num {
+    font-family: var(--f-mono);
+    font-size: 12px;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    flex: none;
+  }
+  .sec-head h2 {
+    font-family: var(--f-display);
+    font-size: clamp(1.4rem, 3.2vw, 1.85rem);
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  p { max-width: var(--measure); }
+  .lead { color: var(--ink-soft); }
+
+  /* ---------- bloc « ce que je dis » ---------- */
+  .say {
+    background: var(--say-bg);
+    border-left: 3px solid var(--say);
+    padding: 16px 20px 18px;
+    margin: 18px 0;
+    max-width: var(--measure);
+  }
+  .say-label {
+    display: block;
+    font-family: var(--f-sans);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--say);
+    margin-bottom: 8px;
+  }
+  .say p {
+    font-family: var(--f-display);
+    font-size: 1.14rem;
+    line-height: 1.62;
+    margin: 0 0 10px;
+    color: var(--ink);
+  }
+  .say p:last-child { margin-bottom: 0; }
+  .say em { font-style: italic; color: var(--say); font-weight: 500; }
+
+  /* ---------- étapes ---------- */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    border-top: 1px solid var(--line);
+  }
+  .step {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    gap: 0 18px;
+    padding: 22px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .step-num {
+    font-family: var(--f-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--surface);
+    background: var(--accent);
+    width: 40px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-variant-numeric: tabular-nums;
+    border-radius: var(--radius);
+  }
+  .step-body h3 {
+    font-family: var(--f-sans);
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin: 0 0 4px;
+    line-height: 1.35;
+  }
+  .step-tech {
+    font-size: 13.5px;
+    color: var(--muted);
+    margin: 0 0 12px;
+    max-width: var(--measure);
+  }
+  .step-tech code { font-size: 12.5px; }
+  .step-body .say { margin: 0; }
+  .reboot {
+    display: inline-block;
+    font-family: var(--f-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    color: var(--accent-ink);
+    background: var(--accent-soft);
+    padding: 1px 7px;
+    border-radius: var(--radius);
+    margin-left: 7px;
+    vertical-align: 2px;
+  }
+
+  /* ---------- code ---------- */
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    font-family: var(--f-mono);
+    font-size: 13px;
+    line-height: 1.7;
+    padding: 15px 18px;
+    overflow-x: auto;
+    border-radius: var(--radius);
+    margin: 14px 0;
+  }
+  pre .c { color: var(--code-dim); }
+  code {
+    font-family: var(--f-mono);
+    font-size: 0.88em;
+    background: var(--surface-alt);
+    padding: 1px 5px;
+    border-radius: var(--radius);
+  }
+  pre code { background: none; padding: 0; font-size: inherit; }
+
+  /* ---------- tableaux ---------- */
+  .tbl-scroll { overflow-x: auto; margin: 18px 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+    min-width: 440px;
+  }
+  th, td {
+    text-align: left;
+    padding: 9px 14px 9px 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th {
+    font-size: 10.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+    border-bottom-color: var(--line-strong);
+  }
+  td.mono, th.mono { font-family: var(--f-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  td b { font-weight: 600; }
+
+  /* ---------- questions ---------- */
+  .qa { display: flex; flex-direction: column; gap: 4px; }
+  details {
+    border-bottom: 1px solid var(--line);
+    padding: 4px 0;
+  }
+  summary {
+    cursor: pointer;
+    padding: 11px 0;
+    font-weight: 600;
+    font-size: 15px;
+    list-style: none;
+    display: flex;
+    gap: 11px;
+    align-items: baseline;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::before {
+    content: "?";
+    font-family: var(--f-mono);
+    color: var(--accent);
+    font-weight: 500;
+    flex: none;
+  }
+  summary:hover { color: var(--accent); }
+  details[open] summary { color: var(--accent); }
+  details .say { margin: 2px 0 14px 23px; }
+
+  /* ---------- vocabulaire ---------- */
+  .vocab {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+  .vocab > div { background: var(--surface); padding: 13px 16px; }
+  .vocab dt {
+    font-weight: 600;
+    font-size: 14.5px;
+    margin: 0 0 3px;
+  }
+  .vocab dd {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+  }
+  .vocab .term-en {
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    color: var(--muted);
+    display: block;
+    margin-top: 3px;
+  }
+
+  /* ---------- phrases de liaison ---------- */
+  .liaison {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+    gap: 18px 30px;
+  }
+  .liaison > div { border-top: 2px solid var(--say); padding-top: 11px; }
+  .liaison h3 {
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .liaison ul { margin: 0; padding-left: 0; list-style: none; }
+  .liaison li {
+    font-family: var(--f-display);
+    font-size: 1.03rem;
+    line-height: 1.45;
+    padding: 4px 0;
+    color: var(--ink);
+  }
+
+  /* ---------- avertissement ---------- */
+  .warn {
+    border: 1px solid var(--say-line);
+    background: var(--say-bg);
+    padding: 15px 18px;
+    margin: 20px 0;
+    max-width: var(--measure);
+  }
+  .warn h3 {
+    margin: 0 0 6px;
+    font-size: 14px;
+    color: var(--say);
+    font-weight: 700;
+  }
+
+  /* à compléter avant la réunion */
+  .fill {
+    background: var(--accent-soft);
+    color: var(--accent-ink);
+    border-bottom: 1px dashed var(--accent);
+    padding: 0 4px;
+    font-style: normal;
+    font-weight: 500;
+  }
+
+  /* option retenue dans le tableau comparatif */
+  tr.retenu td { background: var(--say-bg); }
+  tr.retenu td:first-child { box-shadow: inset 3px 0 0 var(--say); }
+  .tag-retenu {
+    font-family: var(--f-sans);
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--say);
+    display: block;
+    margin-top: 3px;
+  }
+  .warn p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+
+  footer {
+    margin-top: 72px;
+    padding-top: 22px;
+    border-top: 2px solid var(--ink);
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 26px;
+  }
+
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Fiche d'exposé · Automatisation serveur</div>
+    <h1>Parler de DOMLABO</h1>
+    <p class="standfirst">Ouvrir la réunion, présenter les scripts, répondre aux questions — et surtout
+      <em>comment le dire</em>. Chaque partie donne la référence technique, puis la phrase exacte
+      à prononcer, en français simple.</p>
+    <div class="meta-row">
+      <div>Serveur <b>SRV-LABO</b></div>
+      <div>Domaine <b>DOMLABO.LOCAL</b></div>
+      <div>Adresse <b>192.168.1.250</b></div>
+      <div>Durée <b>~15 min</b></div>
+    </div>
+  </header>
+
+  <div class="howto">
+    <div>
+      <h3>Le texte gris</h3>
+      <p>La référence technique. À lire avant, pas à réciter.</p>
+    </div>
+    <div>
+      <h3><span class="swatch-say">Les blocs ocre</span></h3>
+      <p>Les phrases à dire à voix haute. Phrases courtes, présent, mots simples.</p>
+    </div>
+    <div>
+      <h3>Les mots en italique</h3>
+      <p>Le mot important de la phrase. C'est là qu'on ralentit.</p>
+    </div>
+    <div>
+      <h3>Les passages surlignés</h3>
+      <p>À remplacer par vos informations : votre nom, votre fonction, les dates.</p>
+    </div>
+  </div>
+
+  <nav class="toc">
+    <h2>Plan de l'exposé</h2>
+    <ol>
+      <li><a href="#ouverture">Ouvrir la réunion</a></li>
+      <li><a href="#projet">Le projet en une phrase</a></li>
+      <li><a href="#probleme">Le problème que ça règle</a></li>
+      <li><a href="#architecture">Comment ça marche</a></li>
+      <li><a href="#etapes">Les dix étapes</a></li>
+      <li><a href="#postes">Les postes de travail</a></li>
+      <li><a href="#demo">La démonstration</a></li>
+      <li><a href="#questions">Les questions probables</a></li>
+      <li><a href="#vocabulaire">Le vocabulaire</a></li>
+      <li><a href="#liaisons">Les phrases de liaison</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 -->
+  <section id="ouverture">
+    <div class="sec-head"><span class="sec-num">01</span><h2>Ouvrir la réunion</h2></div>
+    <p class="lead">Les trois premières minutes : se présenter, annoncer l'objet, poser la question.
+      Parler lentement — c'est le moment où l'on est le plus tendu.</p>
+
+    <div class="warn">
+      <h3>À compléter avant la réunion</h3>
+      <p>Les passages surlignés sont à remplacer par vos informations. Les dire une fois
+        à voix haute avant d'entrer dans la salle.</p>
+    </div>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — se présenter</span>
+      <p>Bonjour à tous. Merci d'être présents.</p>
+      <p>Je me présente : je m'appelle <span class="fill">votre prénom et nom</span>,
+        je suis <span class="fill">votre fonction</span> chez <span class="fill">structure</span>.</p>
+      <p>Je m'occupe de l'<em>installation du serveur</em> du laboratoire.</p>
+    </div>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — annoncer l'objet et la durée</span>
+      <p>Nous sommes réunis aujourd'hui pour décider <em>comment</em> nous allons installer
+        ce serveur.</p>
+      <p>La réunion devrait durer environ <span class="fill">trente minutes</span>.
+        Je vous propose de procéder en trois temps : d'abord je présente les deux méthodes
+        possibles, ensuite nous en discutons, et enfin nous décidons ensemble.</p>
+      <p>N'hésitez pas à m'interrompre si quelque chose n'est pas clair.</p>
+    </div>
+
+    <h3 style="font-family:var(--f-sans);font-size:1rem;margin:34px 0 8px;">Poser la question</h3>
+    <p>Présenter les deux options <b>de façon neutre</b>. Si l'on donne son avis tout de suite,
+      la discussion est fermée avant d'avoir commencé.</p>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — la question</span>
+      <p>Nous avons deux méthodes possibles.</p>
+      <p>La première est l'installation <em>manuelle</em> : on configure chaque étape à la main,
+        depuis l'interface de Windows Server.</p>
+      <p>La seconde est l'installation <em>automatisée</em> : un script fait tout, et l'on
+        n'intervient pas.</p>
+      <p>Les deux donnent le même résultat. La différence est le <em>temps</em>, la
+        <em>maîtrise</em>, et ce qui se passe le jour où il faut recommencer.</p>
+      <p>Alors, quelle méthode préférez-vous pour cette première installation ?</p>
+    </div>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>Critère</th><th>Installation manuelle</th><th>Installation scriptée</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>Durée</b></td>
+            <td>Longue — il faut rester devant</td>
+            <td>Longue aussi, mais sans personne devant</td>
+          </tr>
+          <tr>
+            <td><b>On voit ce qui se passe</b></td>
+            <td>Oui, écran par écran</td>
+            <td>Seulement dans le journal</td>
+          </tr>
+          <tr>
+            <td><b>Refaire à l'identique</b></td>
+            <td>Difficile — des écarts à chaque fois</td>
+            <td>Garanti — les mêmes réglages</td>
+          </tr>
+          <tr>
+            <td><b>En cas d'erreur</b></td>
+            <td>On corrige tout de suite</td>
+            <td>Le script s'arrête et note la raison</td>
+          </tr>
+          <tr>
+            <td><b>Formation de l'équipe</b></td>
+            <td>On apprend en faisant</td>
+            <td>Il faut lire le script</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="font-family:var(--f-sans);font-size:1rem;margin:34px 0 8px;">Proposer de commencer par la méthode manuelle</h3>
+    <p>C'est votre proposition. L'argument le plus solide n'est pas « c'est plus simple » —
+      c'est que la manuelle <b>sert de référence</b> pour valider le script.</p>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — ma proposition</span>
+      <p>Si vous me permettez, je vais donner mon avis.</p>
+      <p>Je propose de commencer par l'installation <em>manuelle</em>, pour cette première fois.</p>
+      <p>Pour trois raisons.</p>
+      <p>Premièrement, nous voyons chaque étape. Si quelque chose ne va pas dans ce
+        laboratoire — une carte réseau, un disque, une version de Windows — nous le voyons
+        <em>tout de suite</em>, et pas à la fin.</p>
+      <p>Deuxièmement, l'installation manuelle nous donne une <em>référence</em>. Nous saurons
+        exactement à quoi doit ressembler un serveur correct. Sans cette référence, on ne peut
+        pas vérifier que le script a bien travaillé.</p>
+      <p>Troisièmement, cela nous permet de <em>valider le script</em>. Nous le lancerons
+        ensuite sur une machine de test, et nous comparerons les deux résultats.</p>
+      <p>Donc : la première installation à la main, et les suivantes avec le script.
+        Est-ce que cela vous convient ?</p>
+    </div>
+
+    <div class="say">
+      <span class="say-label">Si on me répond « pourquoi ne pas lancer le script tout de suite ? »</span>
+      <p>C'est une bonne question. Le script est prêt, et il fonctionne.</p>
+      <p>Mais il n'a pas encore tourné sur <em>ce matériel</em>. Je préfère que la première
+        installation serve de référence, et que le script soit validé ensuite.</p>
+      <p>Si nous lançons le script en premier et qu'un problème apparaît, nous ne saurons pas
+        si le problème vient du <em>script</em> ou du <em>serveur</em>.</p>
+    </div>
+
+    <div class="say">
+      <span class="say-label">Si on me répond « la méthode manuelle prend trop de temps »</span>
+      <p>Vous avez raison, c'est plus long <em>cette fois-ci</em>.</p>
+      <p>Mais c'est la seule fois. Ensuite le script prend le relais, et nous gagnons du temps
+        à chaque installation suivante.</p>
+      <p>Je peux aussi faire l'installation manuelle <em>en dehors des heures de service</em>,
+        pour ne gêner personne.</p>
+    </div>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — conclure la décision</span>
+      <p>Très bien. Si je résume : nous commençons par une installation <em>manuelle</em>
+        sur le serveur du laboratoire.</p>
+      <p>Je note tout ce que je fais, étape par étape. Ensuite je lance le script sur une
+        machine de test, et je vous présente la comparaison.</p>
+      <p>Je vous propose de faire le point <span class="fill">la semaine prochaine</span>.
+        Est-ce que tout le monde est d'accord ?</p>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section id="projet">
+    <div class="sec-head"><span class="sec-num">02</span><h2>Le projet en une phrase</h2></div>
+    <p class="lead">Commencer simple. Une phrase, puis on développe. Ne pas entrer dans la technique
+      tout de suite.</p>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — ouverture</span>
+      <p>Bonjour. Je vais vous présenter un projet d'<em>automatisation</em>.</p>
+      <p>Le but est simple : installer un serveur complet pour un laboratoire
+        d'analyses médicales, <em>sans intervention manuelle</em>.</p>
+      <p>On lance une seule commande, et le serveur se configure tout seul.
+        Il redémarre quand il faut, et il continue tout seul après chaque redémarrage.</p>
+    </div>
+
+    <p>Le serveur remplit quatre rôles : contrôleur de domaine Active Directory, serveur DNS,
+      serveur de fichiers, et serveur de base de données SQL Server.</p>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — les rôles</span>
+      <p>Le serveur fait quatre choses. Il gère les <em>comptes utilisateurs</em> avec Active Directory.
+        Il fait la <em>résolution de noms</em> avec le DNS. Il partage des <em>dossiers</em> sur le réseau.
+        Et il héberge les <em>bases de données</em> du laboratoire.</p>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section id="probleme">
+    <div class="sec-head"><span class="sec-num">03</span><h2>Le problème que ça règle</h2></div>
+    <p class="lead">C'est la partie qui justifie tout le reste. Un jury ou un collègue veut savoir
+      <em>pourquoi</em>, pas seulement <em>comment</em>.</p>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — avant / après</span>
+      <p>Avant, l'installation se faisait <em>à la main</em>. Il fallait environ une journée
+        de travail, et il fallait rester devant l'écran.</p>
+      <p>Le technicien cliquait, attendait, redémarrait, puis recommençait à l'étape suivante.
+        À chaque installation, les réglages étaient <em>un peu différents</em>.</p>
+      <p>Maintenant, tout est écrit dans un seul fichier de configuration. Le résultat est
+        <em>toujours identique</em>. Et le technicien peut partir pendant que ça s'installe.</p>
+    </div>
+
+    <div class="warn">
+      <h3>Si on vous demande un chiffre</h3>
+      <p>Ne pas inventer de mesure. Dire : « Je n'ai pas mesuré précisément, mais le gain principal
+        n'est pas le temps — c'est que le résultat est reproductible. »</p>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section id="architecture">
+    <div class="sec-head"><span class="sec-num">04</span><h2>Comment ça marche</h2></div>
+    <p class="lead">Quatre fichiers à connaître. C'est le cœur de l'exposé.</p>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th class="mono">Fichier</th><th>Rôle</th><th>Comment le dire</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="mono">config.json</td>
+            <td>Toutes les valeurs : adresse IP, nom du domaine, mots de passe</td>
+            <td>« Le fichier de <b>réglages</b> »</td>
+          </tr>
+          <tr>
+            <td class="mono">Deploy.ps1</td>
+            <td>Le chef d'orchestre : lit la configuration, lance les étapes dans l'ordre</td>
+            <td>« Le script <b>principal</b> »</td>
+          </tr>
+          <tr>
+            <td class="mono">state.json</td>
+            <td>La liste des étapes déjà terminées</td>
+            <td>« La <b>mémoire</b> du script »</td>
+          </tr>
+          <tr>
+            <td class="mono">deploy.log</td>
+            <td>Le journal horodaté de tout ce qui s'est passé</td>
+            <td>« Le <b>journal</b> »</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — les quatre fichiers</span>
+      <p>Il y a quatre fichiers importants.</p>
+      <p><em>config point json</em> contient tous les réglages : l'adresse IP, le nom du domaine,
+        les mots de passe. C'est le seul fichier que l'on modifie.</p>
+      <p><em>Deploy point p s un</em> est le script principal. Il lit la configuration
+        et lance les étapes dans l'ordre.</p>
+      <p><em>state point json</em> est la mémoire du script. Il retient les étapes déjà terminées.</p>
+      <p>Et <em>deploy point log</em> est le journal. Il note tout, avec l'heure.</p>
+    </div>
+
+    <h3 style="font-family:var(--f-sans);font-size:1rem;margin:30px 0 8px;">Le point le plus intéressant : survivre au redémarrage</h3>
+    <p>Trois étapes obligent la machine à redémarrer. Un script normal s'arrêterait là.
+      Celui-ci enregistre une <b>tâche planifiée</b> qui s'exécute au démarrage sous le compte
+      <code>SYSTEM</code>, relance <code>Deploy.ps1 -Resume</code>, saute les étapes déjà faites,
+      et se supprime elle-même à la fin.</p>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — la reprise automatique</span>
+      <p>Voici la partie la plus intéressante.</p>
+      <p>Trois étapes obligent le serveur à <em>redémarrer</em>. Normalement, un script s'arrête
+        à ce moment-là, et il faut le relancer à la main.</p>
+      <p>Ici, le script crée une <em>tâche planifiée</em> qui se déclenche au démarrage de Windows.
+        Elle relance le script, qui consulte sa mémoire, saute les étapes déjà faites, et continue.</p>
+      <p>La tâche s'exécute sous le compte <em>SYSTEM</em>. C'est important : il n'y a donc
+        <em>aucun mot de passe enregistré</em> sur la machine. Et à la fin, la tâche se supprime
+        toute seule.</p>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section id="etapes">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Les dix étapes</h2></div>
+    <p class="lead">Ne pas lire les dix une par une : c'est long et le public décroche.
+      Annoncer les trois groupes, puis détailler seulement les étapes 7, 8 et 9.</p>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — annoncer le plan</span>
+      <p>Il y a dix étapes, que je regroupe en trois parties.</p>
+      <p>D'abord, la <em>préparation du système</em> : le réseau, les rôles Windows, le domaine.</p>
+      <p>Ensuite, la <em>configuration du service</em> : le DNS, le DHCP, les utilisateurs.</p>
+      <p>Enfin, les <em>données</em> : la copie des fichiers, SQL Server, et les bases de données.</p>
+      <p>Je vais détailler les trois dernières, qui sont les plus intéressantes.</p>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">00</span>
+        <div class="step-body">
+          <h3>Réparation de Windows Update <span class="reboot">redémarre</span></h3>
+          <p class="step-tech">DISM <code>/restorehealth</code>, vide le cache, active .NET 3.5. Optionnelle.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">01</span>
+        <div class="step-body">
+          <h3>Réseau et identité <span class="reboot">redémarre</span></h3>
+          <p class="step-tech">Adresse IP fixe, renomme la machine et le compte administrateur, active le Bureau à distance.</p>
+          <div class="say">
+            <span class="say-label">Ce que je dis</span>
+            <p>L'ordre est important ici. On configure le réseau <em>d'abord</em>, et on renomme
+              le compte administrateur <em>en dernier</em>. Sinon Windows ne retrouve plus le compte
+              et l'étape échoue.</p>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">02</span>
+        <div class="step-body">
+          <h3>Installation des rôles <span class="reboot">redémarre</span></h3>
+          <p class="step-tech">.NET 3.5, Active Directory, DNS, et DHCP si activé dans la configuration.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">03</span>
+        <div class="step-body">
+          <h3>Promotion en contrôleur de domaine <span class="reboot">redémarre</span></h3>
+          <p class="step-tech">Crée une nouvelle forêt <code>DOMLABO.LOCAL</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">04</span>
+        <div class="step-body">
+          <h3>Configuration du DNS</h3>
+          <p class="step-tech">Zone directe et zone inverse, redirecteurs vers 8.8.8.8, route par défaut.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">05</span>
+        <div class="step-body">
+          <h3>Configuration du DHCP</h3>
+          <p class="step-tech">Étendue, exclusions, et une stratégie par service. <b>Désactivée</b> dans la configuration actuelle.</p>
+          <div class="say">
+            <span class="say-label">Ce que je dis — si on le remarque</span>
+            <p>Le DHCP est <em>désactivé</em> pour l'instant, parce que les postes ont une adresse fixe.
+              Mais le script est prêt : il suffit de mettre <em>vrai</em> dans le fichier de configuration.</p>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">06</span>
+        <div class="step-body">
+          <h3>Unités d'organisation et utilisateurs</h3>
+          <p class="step-tech">Quatre unités — Accueil, Prélèvement, Technicien, Biologiste — et sept comptes utilisateurs.</p>
+          <div class="say">
+            <span class="say-label">Ce que je dis</span>
+            <p>Le script crée quatre <em>unités d'organisation</em>, une par service du laboratoire :
+              l'accueil, le prélèvement, les techniciens, et les biologistes. Puis il crée
+              les comptes des utilisateurs dans la bonne unité.</p>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">07</span>
+        <div class="step-body">
+          <h3>Copie des données et partages réseau</h3>
+          <p class="step-tech">robocopy depuis la clé USB vers le disque du serveur, puis création des partages SMB.</p>
+          <div class="say">
+            <span class="say-label">Ce que je dis</span>
+            <p>Cette étape copie les données depuis une <em>clé USB</em> vers le disque du serveur,
+              puis elle partage ces dossiers sur le réseau.</p>
+            <p>J'utilise <em>robocopy</em> et non une simple copie. Pourquoi ? Parce que ce sont
+              plusieurs gigaoctets, et robocopy sait <em>reprendre</em> après une erreur.</p>
+            <p>Un détail important : robocopy ne renvoie pas zéro quand tout va bien. Il renvoie
+              <em>un</em> quand des fichiers ont été copiés. Tout ce qui est en dessous de huit
+              est un succès. Il faut le savoir, sinon le script croit qu'il a échoué.</p>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">08</span>
+        <div class="step-body">
+          <h3>Installation de SQL Server</h3>
+          <p class="step-tech">Monte l'image ISO copiée à l'étape 7, installation silencieuse, puis SSMS.</p>
+          <div class="say">
+            <span class="say-label">Ce que je dis</span>
+            <p>Le script cherche l'image ISO à trois endroits, dans l'ordre : le nom attendu,
+              puis <em>n'importe quel</em> fichier ISO de plus de trois cents mégaoctets dans le dossier,
+              et enfin le téléchargement.</p>
+            <p>Le deuxième point est pratique : on peut copier une image depuis une clé USB
+              <em>sans la renommer</em>.</p>
+            <p>Avant de commencer, le script fait une <em>vérification rapide</em> : il contrôle
+              que le compte administrateur existe bien dans le domaine, et qu'il reste assez
+              de place sur le disque. Sans ça, l'erreur n'apparaîtrait qu'au bout de vingt minutes.</p>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">09</span>
+        <div class="step-body">
+          <h3>Restauration des bases de données</h3>
+          <p class="step-tech">Restaure <code>Prolab.bak</code> et <code>dblog.bak</code>, redémarre SQL, exécute la requête, attribue <code>db_owner</code>.</p>
+          <div class="say">
+            <span class="say-label">Ce que je dis</span>
+            <p>La dernière étape restaure les deux bases du laboratoire : <em>Prolab</em>, la base
+              métier, et <em>dblog</em>, la base de journalisation.</p>
+            <p>Ensuite le script active le mode d'authentification mixte, puis il
+              <em>redémarre SQL Server</em> — c'est obligatoire pour que le changement soit pris
+              en compte. Et il attend que le service réponde vraiment avant de continuer.</p>
+            <p>Enfin il crée l'utilisateur <em>Prolab</em>, et il le déclare propriétaire
+              des deux bases.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section id="postes">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Les postes de travail</h2></div>
+    <p class="lead">Un script séparé, un seul fichier à copier sur chaque poste.</p>
+
+    <pre><code>.\Join-Domain.ps1 -Hostname TECH-01 -IPAddress 192.168.1.101</code></pre>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis</span>
+      <p>Le serveur ne suffit pas : il faut aussi préparer les postes de travail.</p>
+      <p>Ce deuxième script fait trois choses : il met une <em>adresse IP fixe</em>,
+        il <em>renomme</em> le poste, et il le <em>joint au domaine</em>.</p>
+      <p>Le renommage et la jonction se font en <em>une seule opération</em>. Si on renommait
+        d'abord, la machine s'enregistrerait dans le domaine sous son ancien nom,
+        et il faudrait deux redémarrages.</p>
+      <p>Avant de joindre, le script vérifie qu'il <em>trouve</em> le contrôleur de domaine.
+        C'est la panne la plus fréquente : le poste utilise encore un DNS public, donc il ne
+        trouve pas le domaine — et le message d'erreur de Windows ne le dit pas clairement.</p>
+    </div>
+
+    <div class="tbl-scroll">
+      <table>
+        <thead>
+          <tr><th>Service</th><th class="mono">Préfixe</th><th class="mono">Adresses</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Accueil</td><td class="mono">ACC-</td><td class="mono">.50 – .74</td></tr>
+          <tr><td>Prélèvement</td><td class="mono">PREV-</td><td class="mono">.75 – .99</td></tr>
+          <tr><td>Technicien</td><td class="mono">TECH-</td><td class="mono">.100 – .124</td></tr>
+          <tr><td>Biologiste</td><td class="mono">BIO-</td><td class="mono">.125 – .149</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — la convention de nommage</span>
+      <p>Les noms des postes suivent le service : <em>ACC</em> pour l'accueil,
+        <em>TECH</em> pour les techniciens, et ainsi de suite.</p>
+      <p>Ce n'est pas seulement cosmétique. Les stratégies DHCP du serveur reconnaissent
+        ces préfixes pour attribuer la bonne plage d'adresses. Aujourd'hui le DHCP est
+        désactivé, mais si on l'active plus tard, <em>rien n'est à renommer</em>.</p>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section id="demo">
+    <div class="sec-head"><span class="sec-num">07</span><h2>La démonstration</h2></div>
+    <p class="lead">Ne pas lancer une installation complète devant un public : c'est trop long.
+      Montrer plutôt la configuration, le journal, et le résultat.</p>
+
+    <pre><code><span class="c"># 1 — montrer les réglages</span>
+notepad .\config.json
+
+<span class="c"># 2 — montrer la mémoire du script</span>
+Get-Content .\state.json
+
+<span class="c"># 3 — montrer le journal en direct</span>
+Get-Content .\deploy.log -Wait
+
+<span class="c"># 4 — montrer le résultat</span>
+Get-ADUser -Filter * | Select-Object Name, Department
+Get-SmbShare
+sqlcmd -S ".\SQLEXPRESS" -E -Q "SELECT name FROM sys.databases"</code></pre>
+
+    <div class="say">
+      <span class="say-label">Ce que je dis — pendant la démonstration</span>
+      <p>Je ne vais pas lancer l'installation complète, parce qu'elle dure environ une heure.
+        Je vais plutôt vous montrer le <em>résultat</em>.</p>
+      <p>Voici le fichier de configuration. Vous voyez : tout est ici, l'adresse,
+        le domaine, les bases de données.</p>
+      <p>Voici le journal. Chaque ligne est <em>horodatée</em>, et chaque étape indique
+        si elle a réussi ou échoué.</p>
+      <p>Et voici le résultat : les utilisateurs dans l'annuaire, les dossiers partagés,
+        et les bases de données restaurées.</p>
+    </div>
+
+    <div class="warn">
+      <h3>Si la démonstration échoue en direct</h3>
+      <p>Rester calme et utiliser le journal : « Justement, c'est pour ça que le script écrit
+        un journal. Regardons la dernière ligne. » Une panne expliquée est plus convaincante
+        qu'une démonstration parfaite.</p>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section id="questions">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Les questions probables</h2></div>
+    <p class="lead">Les réponses sont courtes volontairement. Une question mérite trois phrases,
+      pas un paragraphe.</p>
+
+    <div class="qa">
+      <details>
+        <summary>Pourquoi PowerShell et pas un autre outil ?</summary>
+        <div class="say">
+          <span class="say-label">Ma réponse</span>
+          <p>Parce que PowerShell est <em>déjà installé</em> sur Windows Server. Il n'y a rien
+            à ajouter, aucune dépendance. Et il donne un accès direct à Active Directory,
+            au DNS et au DHCP.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Que se passe-t-il si une étape échoue ?</summary>
+        <div class="say">
+          <span class="say-label">Ma réponse</span>
+          <p>Le script <em>s'arrête</em> et écrit la raison dans le journal. Il ne continue pas,
+            parce que les étapes dépendent les unes des autres.</p>
+          <p>On corrige le problème, puis on relance la même commande. Le script saute
+            les étapes déjà terminées et reprend à celle qui a échoué.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Peut-on relancer le script deux fois sans casser le serveur ?</summary>
+        <div class="say">
+          <span class="say-label">Ma réponse</span>
+          <p>Oui. Chaque étape vérifie d'abord si le travail est <em>déjà fait</em>.
+            Si l'utilisateur existe, elle ne le recrée pas. Si le partage existe,
+            elle le laisse en place.</p>
+          <p>Une seule exception : la requête SQL personnalisée. Elle crée un utilisateur
+            sans vérifier, donc elle échoue si on la relance. C'est un point que je connais.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Et les mots de passe dans le fichier de configuration ?</summary>
+        <div class="say">
+          <span class="say-label">Ma réponse</span>
+          <p>C'est la <em>principale limite</em> du projet. Les mots de passe sont en clair
+            dans <em>config point json</em>.</p>
+          <p>Le fichier est exclu du dépôt Git, donc il n'est jamais publié. Mais pour
+            un usage en production, il faudrait les chiffrer.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Les utilisateurs n'ont pas de mot de passe ?</summary>
+        <div class="say">
+          <span class="say-label">Ma réponse</span>
+          <p>Non, c'est volontaire pour le laboratoire, qui est un réseau <em>isolé</em>.</p>
+          <p>Sur un réseau ouvert, ce serait inacceptable. Il faudrait un mot de passe
+            initial et le changement obligatoire à la première connexion.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Combien de temps prend l'installation complète ?</summary>
+        <div class="say">
+          <span class="say-label">Ma réponse</span>
+          <p>Environ une heure, dont la plus grande partie est l'installation de SQL Server
+            et la copie des données.</p>
+          <p>Mais le point important n'est pas la durée : c'est que personne n'a besoin
+            de <em>rester devant</em>.</p>
+        </div>
+      </details>
+      <details>
+        <summary>Est-ce que ça marche sur une autre version de Windows Server ?</summary>
+        <div class="say">
+          <span class="say-label">Ma réponse</span>
+          <p>Je l'ai testé sur une machine virtuelle. Les commandes utilisées existent
+            depuis Windows Server 2012, donc en principe oui — mais je ne peux pas
+            l'<em>affirmer</em> sans l'avoir testé.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section id="vocabulaire">
+    <div class="sec-head"><span class="sec-num">09</span><h2>Le vocabulaire</h2></div>
+    <p class="lead">Les termes techniques en français, avec l'équivalent anglais que vous
+      connaissez déjà. À dire en français pendant l'exposé.</p>
+
+    <div class="vocab">
+      <div><dl><dt>Le déploiement</dt><dd>L'installation complète, de bout en bout.<span class="term-en">deployment</span></dd></dl></div>
+      <div><dl><dt>Le contrôleur de domaine</dt><dd>Le serveur qui gère les comptes.<span class="term-en">domain controller</span></dd></dl></div>
+      <div><dl><dt>L'annuaire</dt><dd>Active Directory, la base des utilisateurs.<span class="term-en">directory</span></dd></dl></div>
+      <div><dl><dt>Une unité d'organisation</dt><dd>Un dossier de l'annuaire, par service.<span class="term-en">OU</span></dd></dl></div>
+      <div><dl><dt>La forêt</dt><dd>Le niveau le plus haut d'Active Directory.<span class="term-en">forest</span></dd></dl></div>
+      <div><dl><dt>Un partage</dt><dd>Un dossier accessible depuis le réseau.<span class="term-en">share</span></dd></dl></div>
+      <div><dl><dt>Une tâche planifiée</dt><dd>Une action que Windows lance tout seul.<span class="term-en">scheduled task</span></dd></dl></div>
+      <div><dl><dt>La sauvegarde</dt><dd>Le fichier <code>.bak</code> à restaurer.<span class="term-en">backup</span></dd></dl></div>
+      <div><dl><dt>La restauration</dt><dd>Remettre la base à partir du fichier.<span class="term-en">restore</span></dd></dl></div>
+      <div><dl><dt>Le journal</dt><dd>Le fichier qui note tout ce qui se passe.<span class="term-en">log</span></dd></dl></div>
+      <div><dl><dt>Le pare-feu</dt><dd>Le filtre réseau de Windows.<span class="term-en">firewall</span></dd></dl></div>
+      <div><dl><dt>Le redémarrage</dt><dd>Quand la machine repart.<span class="term-en">reboot</span></dd></dl></div>
+      <div><dl><dt>La reprise</dt><dd>Continuer là où on s'est arrêté.<span class="term-en">resume</span></dd></dl></div>
+      <div><dl><dt>Sans intervention</dt><dd>Personne ne clique, ça se fait tout seul.<span class="term-en">unattended</span></dd></dl></div>
+      <div><dl><dt>Le poste de travail</dt><dd>L'ordinateur de l'employé.<span class="term-en">workstation</span></dd></dl></div>
+      <div><dl><dt>Joindre le domaine</dt><dd>Rattacher un poste au serveur.<span class="term-en">join the domain</span></dd></dl></div>
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section id="liaisons">
+    <div class="sec-head"><span class="sec-num">10</span><h2>Les phrases de liaison</h2></div>
+    <p class="lead">Les phrases qui font passer d'une partie à l'autre. Ce sont elles qui
+      donnent l'impression de maîtriser — plus que le vocabulaire technique.</p>
+
+    <div class="liaison">
+      <div>
+        <h3>Pour commencer</h3>
+        <ul>
+          <li>Je vais vous présenter…</li>
+          <li>Mon projet porte sur…</li>
+          <li>Commençons par le problème.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Pour enchaîner</h3>
+        <ul>
+          <li>Passons maintenant à…</li>
+          <li>Voyons la partie suivante.</li>
+          <li>Cela m'amène à…</li>
+          <li>Deuxième point :…</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Pour montrer l'écran</h3>
+        <ul>
+          <li>Comme vous pouvez le voir ici…</li>
+          <li>Regardez cette ligne.</li>
+          <li>Je vous montre le résultat.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Pour insister</h3>
+        <ul>
+          <li>Le point important, c'est…</li>
+          <li>Ce qui compte ici, c'est…</li>
+          <li>Et c'est là tout l'intérêt.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Pour expliquer un choix</h3>
+        <ul>
+          <li>J'ai choisi cette solution parce que…</li>
+          <li>La raison est simple :…</li>
+          <li>Sinon, le problème serait…</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Si vous ne savez pas</h3>
+        <ul>
+          <li>Je n'ai pas testé ce cas.</li>
+          <li>Je préfère ne pas affirmer.</li>
+          <li>C'est une bonne question, je vais vérifier.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Pour gagner du temps</h3>
+        <ul>
+          <li>Si je comprends bien, vous demandez…</li>
+          <li>Je reformule la question…</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Pour conclure</h3>
+        <ul>
+          <li>Pour résumer…</li>
+          <li>En conclusion…</li>
+          <li>Je vous remercie de votre attention.</li>
+          <li>Avez-vous des questions ?</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="say" style="margin-top:32px;">
+      <span class="say-label">Ce que je dis — la conclusion</span>
+      <p>Pour résumer : une seule commande installe un serveur complet, et le script
+        <em>reprend tout seul</em> après chaque redémarrage.</p>
+      <p>Les limites que je connais : les mots de passe sont en clair dans la configuration,
+        et les comptes du laboratoire n'ont pas de mot de passe. Ce sont des choix acceptables
+        pour un réseau isolé, pas pour un réseau ouvert.</p>
+      <p>Je vous remercie de votre attention. Avez-vous des questions ?</p>
+    </div>
+  </section>
+
+  <footer>
+    <div>Fiche d'exposé · DOMLABO.LOCAL</div>
+    <div>Serveur : 10 étapes · Postes : 1 script</div>
+    <div>Référence technique : <code>deploy\README.md</code></div>
+  </footer>
+
+</div>

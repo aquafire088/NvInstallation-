@@ -1,0 +1,92 @@
+{
+  "_comment": "Copy this file to config.json and edit the values. All steps run unattended from these values. Do NOT commit config.json (it contains passwords).",
+
+  "Network": {
+    "Hostname": "SRV-LABO",
+    "NewAdminUsername": "adcipro",
+    "IPAddress": "192.168.1.250",
+    "SubnetMask": "255.255.255.0",
+    "Gateway": "192.168.1.1",
+    "PrimaryDNS": "192.168.1.250",
+    "SecondaryDNS": "",
+    "AdapterName": ""
+  },
+
+  "Domain": {
+    "DomainName": "DOMLABO.LOCAL",
+    "NetbiosName": "DOMLABO",
+    "DSRMPassword": ""
+  },
+
+  "DNS": {
+    "Forwarder1": "8.8.8.8",
+    "Forwarder2": "8.8.4.4"
+  },
+
+  "DHCP": {
+    "_comment": "false skips step 5 AND the DHCP role install in step 2 - use it when something else on the network already serves DHCP.",
+    "Enabled": true
+  },
+
+  "SQL": {
+    "Install": true,
+    "_comment": "InstallFolder is both where the ISO is looked for and where SQL installs. Step 8 uses InstallFolder\\SQL_Server_Install.iso, else any .iso over 300 MB in that folder (so a hand-copied ISO works under any name), else downloads DownloadUrl. Leave DownloadUrl empty to install strictly from a staged ISO.",
+    "DownloadUrl": "https://burdpme.sage.com.dl1.ipercast.net/PME/Serveurs/SQL_Std_2019Dec_64Bit_French.iso",
+    "InstallFolder": "D:\\Utilitaire\\software\\sql",
+    "InstanceName": "SQLEXPRESS",
+    "SAPassword": "",
+    "DataFolder": "D:\\SQL_DATA",
+    "InstallSSMS": true,
+    "SSMSUrl": "https://aka.ms/ssmsfullsetup"
+  },
+
+  "Staging": {
+    "_comment": "Step 6b - robocopy folders off removable media onto the server disk BEFORE SQL installs. SourceRoot is the USB key, DestinationRoot the internal disk; each Folders entry is copied SourceRoot\\<name> -> DestinationRoot\\<name>. Empty Folders = every top-level folder on the media. ExcludeFiles takes robocopy /XF patterns.",
+    "Enabled": true,
+    "SourceRoot": "E:\\",
+    "DestinationRoot": "D:\\",
+    "Folders": ["Backup", "Docs", "LastBuild", "Reports", "SQL_DATA", "Utilitaire"],
+    "ExcludeFiles": []
+  },
+
+  "FileShares": {
+    "_comment": "Step 7, second half: create each Path, set its NTFS rights, and share it as ShareName over SMB. Leave ShareName empty to create the folder without sharing. Access lists take bare group names (GG_Technicien) resolved against the real domain NetBIOS name, or fully qualified DOMAIN\\Group; well-known groups such as Domain Admins are auto-corrected to their real, possibly localized name. FullAccess=FullControl, ChangeAccess=Modify, ReadAccess=ReadAndExecute. ApplyNtfs true rebuilds the folder ACL from these lists (inheritance broken; SYSTEM and Administrators always kept) - set false to write share permissions only. The GG_* department groups are created in step 6. Copying is done by the Staging section above.",
+    "Enabled": true,
+    "ApplyNtfs": true,
+    "Items": [
+      {
+        "Path": "D:\\Partage\\Labo",
+        "ShareName": "Labo",
+        "Description": "Dossier partage du laboratoire",
+        "FullAccess": ["Domain Admins"],
+        "ChangeAccess": ["GG_Technicien", "GG_Biologiste"],
+        "ReadAccess": ["GG_Accueil"]
+      }
+    ]
+  },
+
+  "Database": {
+    "_comment": "Order: restore each Restores[].BakFile (found in BackupFolder) as DatabaseName relocating its files to DataFolder; set Mixed-Mode and restart SQL; run CustomSqlScript verbatim (inline T-SQL or a .sql path, GO separators supported); create SqlLogin only if Create is true; finally grant SqlLogin.Name db_owner on DbOwnerOf. The db_owner grant runs even when Create is false, so a login created by CustomSqlScript still gets ownership. A bare CREATE LOGIN in CustomSqlScript is not re-runnable - guard it with IF NOT EXISTS if step 9 may run twice.",
+    "Enabled": true,
+    "Server": ".\\SQLEXPRESS",
+    "InstanceName": "SQLEXPRESS",
+    "BackupFolder": "D:\\InitialBase",
+    "DataFolder": "D:\\SQL_DATA",
+    "Restores": [
+      { "BakFile": "prolab.bak", "DatabaseName": "prolab" },
+      { "BakFile": "dblog.bak",  "DatabaseName": "dblog" }
+    ],
+    "SqlLogin": {
+      "Create": true,
+      "Name": "prolab",
+      "Password": "ChangeMe#2026",
+      "DbOwnerOf": ["prolab", "dblog"]
+    },
+    "CustomSqlScript": ""
+  },
+
+  "Options": {
+    "RunTroubleshootUpdate": false,
+    "RebootDelaySeconds": 10
+  }
+}

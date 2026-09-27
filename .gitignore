@@ -20,6 +20,18 @@ Thumbs.db
 *.key
 *.pem
 
+# Deployer runtime + secrets (config.json holds passwords)
+deploy/config.json
+deploy/config.dc02.json
+deploy/state.json
+deploy/deploy.log
+
+# Local snapshots / archives of this repo - never commit copies of itself
+*.rar
+*.zip
+*.7z
+sERVEUR SAMA/
+
 # Build artifacts
 bin/
 obj/
