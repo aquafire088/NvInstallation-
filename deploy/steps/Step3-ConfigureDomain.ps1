@@ -8,8 +8,10 @@ param(
     [Parameter(Mandatory)] [string]$DomainName,
     [Parameter(Mandatory)] [string]$NetbiosName,
     [Parameter(Mandatory)] [string]$DSRMPassword,
-    [string]$ForestLevel = "Win2012R2",
-    [string]$DomainLevel = "Win2012R2"
+    # 2016 (WinThreshold) is the highest level on Server 2022 and the minimum
+    # for Windows LAPS password encryption (step 11). All DCs are 2022.
+    [string]$ForestLevel = "WinThreshold",
+    [string]$DomainLevel = "WinThreshold"
 )
 . (Join-Path (Split-Path -Parent $PSScriptRoot) "lib\Common.ps1")
 

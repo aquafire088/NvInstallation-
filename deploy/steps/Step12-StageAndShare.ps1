@@ -1,12 +1,12 @@
 # ----------------------
-# Step 7: Stage data folders from removable media, then share them on the network.
+# Step 12: Stage data folders from removable media, then share them on the network.
 #
 # Part A - robocopy each folder from the USB key onto the server disk.
 #   Not Copy-Item: these are multi-GB copies off removable media, where
 #   retry/resume and unbuffered I/O decide whether the copy finishes at all.
 # Part B - create the SMB shares over those same folders.
 #
-# Runs BEFORE the SQL install (step 8) so the ISO and initial databases are on
+# Runs BEFORE the SQL install (step 13) so the ISO and initial databases are on
 # local disk by the time setup needs them. Needs AD to be up: share ACLs are
 # granted to domain groups, which must resolve to SIDs.
 # Exit: 0 = ok, 1 = error
@@ -23,7 +23,7 @@ param(
 . (Join-Path (Split-Path -Parent $PSScriptRoot) "lib\Common.ps1")
 
 Assert-Administrator
-Write-Log "STEP 7: Stage data from removable media and share it" "STEP"
+Write-Log "STEP 12: Stage data from removable media and share it" "STEP"
 
 $hadError = $false
 
@@ -38,11 +38,11 @@ if ($StageEnabled) {
     $dst = $DestinationRoot.TrimEnd('\', '/')
 
     # The USB key is the whole point of this half - if it isn't mounted, stop
-    # rather than letting step 8 fail later with a confusing "no ISO found".
+    # rather than letting step 13 fail later with a confusing "no ISO found".
     if (-not (Test-Path $SourceRoot)) {
         Write-Log "Source '$SourceRoot' is not available. Is the USB key plugged in and mounted on that letter?" "ERROR"
         Write-Log "Check with: Get-Volume | Select-Object DriveLetter, FileSystemLabel" "ERROR"
-        Write-Log "Step 8 (SQL) will not find its ISO without this staging step." "ERROR"
+        Write-Log "Step 13 (SQL) will not find its ISO without this staging step." "ERROR"
         exit 1
     }
 
@@ -163,7 +163,7 @@ function Resolve-Accounts {
             continue
         }
         catch { }
-        # A bare name ("GG_Technicien") - qualify it with the REAL NetBIOS name
+        # A bare name ("GG-Techniciens") - qualify it with the REAL NetBIOS name
         # from AD. This is what makes config files survive a domain whose NetBIOS
         # name is not simply the first label of the FQDN.
         if ($n -notmatch '\\' -and $script:DomainNetbios) {
@@ -334,7 +334,7 @@ foreach ($item in $items) {
 }
 
 if ($hadError) {
-    Write-Log "Step 7 finished with one or more errors (see above)." "ERROR"
+    Write-Log "Step 12 finished with one or more errors (see above)." "ERROR"
     exit 1
 }
 Write-Log "All folders staged and shared on the network." "OK"

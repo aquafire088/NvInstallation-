@@ -52,7 +52,29 @@ Write-Log "==================================================" "STEP"
 # and whether AD must be ready before it runs.
 # ============================================================
 
-# FileShares (step 8) config may be absent in older configs - guard it.
+# IPv6 (step 1) is disabled unless the config explicitly says false (spec: off everywhere).
+$disableIPv6 = if ($null -ne $cfg.Network.DisableIPv6) { [bool]$cfg.Network.DisableIPv6 } else { $true }
+
+# DNS forwarders (step 4): the Forwarders list, else the older Forwarder1/Forwarder2 keys.
+$dnsForwarders = if ($cfg.DNS.Forwarders) { @($cfg.DNS.Forwarders) }
+                 else { @($cfg.DNS.Forwarder1, $cfg.DNS.Forwarder2) | Where-Object { $_ } }
+
+# Directory (steps 6-9): OUs, role groups, users, domain admin. Required - there is no sane default
+# for who works in the lab, so fail before touching anything.
+if (-not $cfg.Directory) {
+    Write-Log "config.json has no 'Directory' section (OUs, Roles, Users). Copy it from config.sample.json." "ERROR"
+    exit 1
+}
+$directoryJson = $cfg.Directory | ConvertTo-Json -Depth 8
+
+# Policy (step 10) is optional section by section: absent or Enabled=false keeps
+# the Windows standard setting.
+$policyJson = if ($cfg.Policy) { $cfg.Policy | ConvertTo-Json -Depth 8 } else { "{}" }
+
+# LAPS (step 11) is optional: absent or Enabled=false skips the step.
+$lapsJson = if ($cfg.LAPS) { $cfg.LAPS | ConvertTo-Json -Depth 4 } else { "{}" }
+
+# FileShares (step 12) config may be absent in older configs - guard it.
 $fileSharesEnabled  = [bool]($cfg.FileShares -and $cfg.FileShares.Enabled)
 $fileShareItemsJson = if ($cfg.FileShares -and $cfg.FileShares.Items) {
     @($cfg.FileShares.Items) | ConvertTo-Json -Depth 8
@@ -61,7 +83,7 @@ $fileShareItemsJson = if ($cfg.FileShares -and $cfg.FileShares.Items) {
 # DHCP (steps 2 + 5) is optional; absent config means enabled (old behaviour).
 $dhcpEnabled = if ($null -ne $cfg.DHCP -and $null -ne $cfg.DHCP.Enabled) { [bool]$cfg.DHCP.Enabled } else { $true }
 
-# Staging (step 7) copies the USB key onto the server disk before SQL needs it.
+# Staging (step 12) copies the USB key onto the server disk before SQL needs it.
 $stagingEnabled = [bool]($cfg.Staging -and $cfg.Staging.Enabled)
 $stagingFoldersJson = if ($cfg.Staging -and $cfg.Staging.Folders) {
     @($cfg.Staging.Folders) | ConvertTo-Json -Depth 4
@@ -70,7 +92,7 @@ $stagingExcludesJson = if ($cfg.Staging -and $cfg.Staging.ExcludeFiles) {
     @($cfg.Staging.ExcludeFiles) | ConvertTo-Json -Depth 4
 } else { "[]" }
 
-# Database (step 9) config may be absent in older configs - guard it.
+# Database (step 14) config may be absent in older configs - guard it.
 $databaseEnabled = [bool]($cfg.Database -and $cfg.Database.Enabled)
 $databaseJson    = if ($cfg.Database) { $cfg.Database | ConvertTo-Json -Depth 8 } else { "{}" }
 
@@ -82,7 +104,7 @@ $plan = @(
         Args = @{}
     },
     @{
-        Id = "1-Network"; Name = "Network / Hostname / RDP"; Enabled = $true
+        Id = "1-Network"; Name = "Network / IPv6 / Hostname / RDP"; Enabled = $true
         Script = "Step1-Network.ps1"; RequiresAD = $false
         Args = @{
             Hostname         = $cfg.Network.Hostname
@@ -93,6 +115,7 @@ $plan = @(
             PrimaryDNS       = $cfg.Network.PrimaryDNS
             SecondaryDNS     = $cfg.Network.SecondaryDNS
             AdapterName      = $cfg.Network.AdapterName
+            DisableIPv6      = $disableIPv6
         }
     },
     @{
@@ -113,10 +136,10 @@ $plan = @(
         Id = "4-DNS"; Name = "Configure DNS"; Enabled = $true
         Script = "Step4-ConfigureDNS.ps1"; RequiresAD = $true
         Args = @{
-            DomainName = $cfg.Domain.DomainName
-            Forwarder1 = $cfg.DNS.Forwarder1
-            Forwarder2 = $cfg.DNS.Forwarder2
-            ServerIP   = $cfg.Network.IPAddress
+            DomainName   = $cfg.Domain.DomainName
+            Forwarders   = $dnsForwarders
+            ServerIP     = $cfg.Network.IPAddress
+            SecondaryDNS = $(if ($cfg.DNS.SecondaryDNS) { $cfg.DNS.SecondaryDNS } else { "" })
         }
     },
     @{
@@ -125,15 +148,42 @@ $plan = @(
         Args = @{ DomainName = $cfg.Domain.DomainName; ServerIP = $cfg.Network.IPAddress }
     },
     @{
-        Id = "6-Users"; Name = "Create lab OUs & users"; Enabled = $true
-        Script = "Step6-LabUsers.ps1"; RequiresAD = $true
-        Args = @{ DomainName = $cfg.Domain.DomainName }
+        Id = "6-Structure"; Name = "Functional OUs (Utilisateurs/Groupes/Administrateurs/Postes)"; Enabled = $true
+        Script = "Step6-Structure.ps1"; RequiresAD = $true
+        Args = @{ DirectoryJson = $directoryJson }
     },
     @{
-        Id = "7-Staging"; Name = "Stage data from USB, then share it"
+        Id = "7-Groups"; Name = "Role security groups"; Enabled = $true
+        Script = "Step7-Groups.ps1"; RequiresAD = $true
+        Args = @{ DirectoryJson = $directoryJson }
+    },
+    @{
+        Id = "8-Users"; Name = "Lab users (initial password, change at logon)"; Enabled = $true
+        Script = "Step8-Users.ps1"; RequiresAD = $true
+        Args = @{ DirectoryJson = $directoryJson }
+    },
+    @{
+        Id = "9-Admins"; Name = "Domain admin account (ad-sama)"; Enabled = $true
+        Script = "Step9-Admins.ps1"; RequiresAD = $true
+        Args = @{ DirectoryJson = $directoryJson }
+    },
+    @{
+        Id = "10-GPO"; Name = "Password/lockout policy + workstation GPOs"; Enabled = $true
+        Script = "Step10-GPO.ps1"; RequiresAD = $true
+        Args = @{ DirectoryJson = $directoryJson; PolicyJson = $policyJson }
+    },
+    @{
+        Id = "11-LAPS"; Name = "Windows LAPS (admin-sama on workstations)"
+        # Not marked done while disabled, so enabling it later runs it on the next deploy.
+        Enabled = [bool]($cfg.LAPS -and $cfg.LAPS.Enabled)
+        Script = "Step11-LAPS.ps1"; RequiresAD = $true
+        Args = @{ DirectoryJson = $directoryJson; LapsJson = $lapsJson }
+    },
+    @{
+        Id = "12-Staging"; Name = "Stage data from USB, then share it"
         # Runs if either half is wanted; RequiresAD because share ACLs name domain groups.
         Enabled = ($stagingEnabled -or $fileSharesEnabled)
-        Script = "Step7-StageAndShare.ps1"; RequiresAD = $true
+        Script = "Step12-StageAndShare.ps1"; RequiresAD = $true
         Args = @{
             StageEnabled     = $stagingEnabled
             SourceRoot       = $(if ($cfg.Staging) { $cfg.Staging.SourceRoot } else { "" })
@@ -145,9 +195,9 @@ $plan = @(
         }
     },
     @{
-        Id = "8-SQL"; Name = "Install SQL Server"
+        Id = "13-SQL"; Name = "Install SQL Server"
         Enabled = [bool]$cfg.SQL.Install
-        Script = "Step8-InstallSQL.ps1"; RequiresAD = $true
+        Script = "Step13-InstallSQL.ps1"; RequiresAD = $true
         Args = @{
             DownloadUrl   = $cfg.SQL.DownloadUrl
             InstallFolder = $cfg.SQL.InstallFolder
@@ -161,9 +211,9 @@ $plan = @(
         }
     },
     @{
-        Id = "9-Database"; Name = "Restore databases & SQL users"
+        Id = "14-Database"; Name = "Restore databases & SQL users"
         Enabled = $databaseEnabled
-        Script = "Step9-Database.ps1"; RequiresAD = $false
+        Script = "Step14-Database.ps1"; RequiresAD = $false
         Args = @{ ConfigJson = $databaseJson }
     }
 )

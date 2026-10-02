@@ -207,6 +207,32 @@ function Get-ServerNetworkInfo {
 }
 
 # ============================================================
+# Directory section (steps 6-11). Parses the JSON passed by Deploy.ps1
+# and fills the OU names the spec fixes, so a partial config still works.
+# DNs come from AD itself, never from the FQDN string.
+# ============================================================
+function ConvertFrom-DirectoryJson {
+    param([string]$Json)
+    $dir = $Json | ConvertFrom-Json
+    $defaults = @{ Users = "Utilisateurs"; Groups = "Groupes"; Admins = "Administrateurs"; Computers = "Postes" }
+    if (-not $dir.OUs) { $dir | Add-Member -NotePropertyName OUs -NotePropertyValue ([pscustomobject]@{}) }
+    foreach ($k in $defaults.Keys) {
+        if ([string]::IsNullOrWhiteSpace($dir.OUs.$k)) {
+            $dir.OUs | Add-Member -NotePropertyName $k -NotePropertyValue $defaults[$k] -Force
+        }
+    }
+    return $dir
+}
+
+# "Postes" -> OU=Postes,DC=DOMLABO,DC=LOCAL ; ("Technicien","Utilisateurs") -> nested.
+function Get-LabOUDN {
+    param([string]$Name, [string]$Parent = "")
+    $base = (Get-ADDomain).DistinguishedName
+    if ($Parent) { return "OU=$Name,OU=$Parent,$base" }
+    return "OU=$Name,$base"
+}
+
+# ============================================================
 # Wait for Active Directory to be ready (after DC promotion)
 # ============================================================
 function Wait-ForADReady {

@@ -1,5 +1,5 @@
 # ----------------------
-# Step 1: Network + Hostname + RDP (non-interactive, idempotent)
+# Step 1: Network + IPv6 off + Hostname + RDP (non-interactive, idempotent)
 # Order matters: configure the network FIRST, then rename the account and
 # computer LAST. Renaming the logged-in admin account before a CIM call
 # (New-NetIPAddress) corrupts name->SID resolution and fails with error 1332.
@@ -13,7 +13,8 @@ param(
     [Parameter(Mandatory)] [string]$Gateway,
     [Parameter(Mandatory)] [string]$PrimaryDNS,
     [string]$SecondaryDNS = "",
-    [string]$AdapterName  = ""
+    [string]$AdapterName  = "",
+    [bool]$DisableIPv6    = $true
 )
 . (Join-Path (Split-Path -Parent $PSScriptRoot) "lib\Common.ps1")
 
@@ -43,7 +44,7 @@ function Get-TargetAdapter {
 }
 
 Assert-Administrator
-Write-Log "STEP 1: Network / Hostname / RDP" "STEP"
+Write-Log "STEP 1: Network / IPv6 / Hostname / RDP" "STEP"
 
 # --- Validate inputs -----------------------------------------
 foreach ($pair in @(@{n="IP";v=$IPAddress}, @{n="Gateway";v=$Gateway}, @{n="Primary DNS";v=$PrimaryDNS})) {
@@ -90,6 +91,36 @@ try {
     if (-not [string]::IsNullOrWhiteSpace($SecondaryDNS)) { $dnsServers += $SecondaryDNS }
     Set-DnsClientServerAddress -InterfaceIndex $adapter.IfIndex -ServerAddresses $dnsServers -ErrorAction Stop
     Write-Log "DNS set: $($dnsServers -join ', ')" "OK"
+
+    # ---------- 1b) DISABLE IPv6 (spec: "IPv6 desactive sur toutes les machines") ----------
+    # Two layers: unbind IPv6 from the adapter (immediate), and DisabledComponents
+    # 0xFF so the stack itself stays off (tunnels, other NICs). The registry value
+    # only takes effect after a reboot - this step reboots anyway.
+    # CIM call: must stay above the account rename.
+    if ($DisableIPv6) {
+        $binding = Get-NetAdapterBinding -Name $adapter.Name -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue
+        if ($binding -and $binding.Enabled) {
+            Disable-NetAdapterBinding -Name $adapter.Name -ComponentID ms_tcpip6 -ErrorAction Stop
+            Write-Log "IPv6 unbound from adapter $($adapter.Name)." "OK"
+        }
+        else {
+            Write-Log "IPv6 already unbound from adapter $($adapter.Name)." "OK"
+        }
+
+        $tcpip6Key = "HKLM:\SYSTEM\CurrentControlSet\Services\Tcpip6\Parameters"
+        $current = (Get-ItemProperty -Path $tcpip6Key -Name DisabledComponents -ErrorAction SilentlyContinue).DisabledComponents
+        if ($current -eq 0xFF) {
+            Write-Log "IPv6 stack already disabled (DisabledComponents=0xFF)." "OK"
+        }
+        else {
+            New-ItemProperty -Path $tcpip6Key -Name DisabledComponents -PropertyType DWord -Value 0xFF -Force -ErrorAction Stop | Out-Null
+            Write-Log "IPv6 stack disabled (DisabledComponents=0xFF, reboot to apply)." "OK"
+            $rebootNeeded = $true
+        }
+    }
+    else {
+        Write-Log "DisableIPv6 is false; leaving IPv6 as is." "INFO"
+    }
 
     # ---------- 2) RDP ----------
     Write-Log "Enabling Remote Desktop (RDP)..." "INFO"

@@ -1,5 +1,5 @@
 # ----------------------
-# Step 8: Install SQL Server (non-interactive, idempotent)
+# Step 13: Install SQL Server (non-interactive, idempotent)
 # Downloads ISO, mounts it, runs unattended setup. Exit: 0 = ok, 1 = error
 # ----------------------
 param(
@@ -18,7 +18,7 @@ param(
 . (Join-Path (Split-Path -Parent $PSScriptRoot) "lib\Common.ps1")
 
 Assert-Administrator
-Write-Log "STEP 8: Install SQL Server" "STEP"
+Write-Log "STEP 13: Install SQL Server" "STEP"
 
 # ============================================================
 # Install SQL Server Management Studio (SSMS) from the web.
@@ -320,7 +320,7 @@ try {
     exit 1
 }
 catch {
-    Write-Log "Step 8 failed: $($_.Exception.Message)" "ERROR"
+    Write-Log "Step 13 failed: $($_.Exception.Message)" "ERROR"
     Dismount-DiskImage -ImagePath $isoPath -ErrorAction SilentlyContinue
     exit 1
 }

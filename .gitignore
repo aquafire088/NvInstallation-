@@ -5,6 +5,7 @@
 *.tmp
 *.temp
 *.log
+*.log.old
 
 # Windows
 Thumbs.db
@@ -22,6 +23,7 @@ Thumbs.db
 
 # Deployer runtime + secrets (config.json holds passwords)
 deploy/config.json
+deploy/config.json.bak
 deploy/config.dc02.json
 deploy/state.json
 deploy/deploy.log
