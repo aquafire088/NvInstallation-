@@ -9,7 +9,9 @@
     "Gateway": "192.168.1.1",
     "PrimaryDNS": "192.168.1.250",
     "SecondaryDNS": "",
-    "AdapterName": ""
+    "AdapterName": "",
+    "_comment_DisableIPv6": "true (default) unbinds IPv6 from the adapter and sets Tcpip6 DisabledComponents=0xFF - the spec disables IPv6 on every machine.",
+    "DisableIPv6": true
   },
 
   "Domain": {
@@ -19,18 +21,115 @@
   },
 
   "DNS": {
-    "Forwarder1": "8.8.8.8",
-    "Forwarder2": "8.8.4.4"
+    "_comment": "Step 4. Forwarders = upstream resolvers for Internet names. After step 4 the server's own DNS client is 127.0.0.1, then SecondaryDNS if set (put DC02's IP here once it exists). The older Forwarder1/Forwarder2 keys are still read when Forwarders is absent.",
+    "Forwarders": ["8.8.8.8", "8.8.4.4", "1.1.1.1"],
+    "SecondaryDNS": ""
   },
 
   "DHCP": {
-    "_comment": "false skips step 5 AND the DHCP role install in step 2 - use it when something else on the network already serves DHCP.",
-    "Enabled": true
+    "_comment": "Two switches, both OFF when false or missing. InstallRole: step 2 installs the DHCP Server role only - no scope, not authorised, it hands out NO address. Configure: step 5 creates the scope and authorises the server (implies InstallRole) - leave false until step 5 is rewritten, and never set it while another DHCP server (box, router) is active on the same network. Workstations joined with poste\\Join-Domain.ps1 use static IPs and do not need DHCP. The older Enabled=true still means both.",
+    "InstallRole": true,
+    "Configure": false
+  },
+
+  "Directory": {
+    "_comment": "Steps 6-8 (required). OUs: the four functional top-level OUs - keep the names, later steps link GPOs and LAPS to Computers/Admins. ComputerSubOUs: optional sub-OUs created under OUs.Computers (Technicien = always-on GPO, Policy.AlwaysOn; Join-Domain.ps1 puts TECH-* PCs there). Roles: one sub-OU under OUs.Users and one global security group each; rights are granted to these groups, never to users. ExtraGroups: other groups created in OUs.Groups, Members are added to them (GG-PC-Admins = the only local-admin group on workstations; adcipro = the built-in Administrator). InitialPassword: given to every NEW user (and to v1 users that had no password), who must change it at first logon - it must satisfy the domain complexity policy. Existing users keep their password. Users[].Role must match a Roles[].Name. Optional per user: Password (own password instead of InitialPassword), ChangePasswordAtLogon (default true; false REQUIRES Password - needed for Remote Desktop and auto-logon accounts), PasswordNeverExpires (default false; true for auto-logon accounts).",
+    "OUs": {
+      "Users": "Utilisateurs",
+      "Groups": "Groupes",
+      "Admins": "Administrateurs",
+      "Computers": "Postes"
+    },
+    "Roles": [
+      { "Name": "Accueil",    "Group": "GG-Accueil" },
+      { "Name": "Technicien", "Group": "GG-Techniciens" },
+      { "Name": "Biologiste", "Group": "GG-Biologistes" },
+      { "Name": "Preleveur",  "Group": "GG-Preleveurs" }
+    ],
+    "ExtraGroups": [
+      { "Name": "GG-PC-Admins", "Description": "Administrateurs locaux des postes (GPO + LAPS)", "Members": ["adcipro"] }
+    ],
+    "InitialPassword": "Prolab@2026!",
+    "ComputerSubOUs": ["Technicien"],
+    "_comment_DomainAdmin": "Step 9 (optional). Enabled=false: no extra domain admin, the built-in Administrator (Network.NewAdminUsername, adcipro) stays the only one. Enabled=true: the named account is created in OUs.Admins and added to Domain Admins (found by RID, so localized names don't matter) plus MemberOf. Password is used only when the account is created - an existing account keeps its own; step 9 fails if Password is empty and the account does not exist yet. The built-in Administrator is not touched.",
+    "DomainAdmin": {
+      "Enabled": false,
+      "Username": "ad-sama",
+      "DisplayName": "Admin Sama Consulting",
+      "Password": "",
+      "MemberOf": ["GG-PC-Admins"]
+    },
+    "Users": [
+      { "Username": "sec01",        "FirstName": "Secretaire",  "LastName": "01", "Role": "Accueil",    "Title": "Secretaire Medicale" },
+      { "Username": "sec02",        "FirstName": "Secretaire",  "LastName": "02", "Role": "Accueil",    "Title": "Secretaire Medicale" },
+      { "Username": "prev01",       "FirstName": "Preleveur",   "LastName": "01", "Role": "Preleveur",  "Title": "Preleveur" },
+      { "Username": "prev02",       "FirstName": "Preleveur",   "LastName": "02", "Role": "Preleveur",  "Title": "Preleveur" },
+      { "Username": "tech01",       "FirstName": "Technicien",  "LastName": "01", "Role": "Technicien", "Title": "Technicien de Laboratoire" },
+      { "Username": "tech02",       "FirstName": "Technicien",  "LastName": "02", "Role": "Technicien", "Title": "Technicien de Laboratoire" },
+      { "Username": "biologiste01", "FirstName": "Biologiste",  "LastName": "01", "Role": "Biologiste", "Title": "Biologiste" },
+      { "Username": "biologiste001", "FirstName": "Biologiste", "LastName": "001", "Role": "Biologiste", "Title": "Biologiste",
+        "Password": "", "ChangePasswordAtLogon": false, "PasswordNeverExpires": false }
+    ]
+  },
+
+  "Policy": {
+    "_comment": "Step 10. Every section is OPTIONAL: set Enabled to false (or leave a value empty) and Windows keeps its standard setting. Windows standard on Server 2019/2022: min length 7, complexity on, history 24, max age 42 days, min age 1 day, NO lockout. Turning a section off later does not undo what a previous run applied. PasswordPolicy + Lockout are domain-wide (Default Domain Policy). SharedWorkstations and LocalAdmins are GPOs linked to the Postes OU. LocalAdmins.Mode: Exclusive = local Administrators holds ONLY Group + ExtraMembers (spec); Add = Group is added, existing members stay. ExtraMembers: AD names are resolved to SIDs, other names (a local account) are resolved on the workstation; admin-sama is added by step 11 when LAPS is enabled. AlwaysOn: GPO on the Postes sub-OU SubOU (must be in Directory.ComputerSubOUs) - never lock, never sleep, screen always on; overrides SharedWorkstations there. ServerRemoteDesktop: Users (non-admin, from Directory.Users, with their own password and ChangePasswordAtLogon=false) may RDP to the domain controller; 2 sessions at the same time without the RDS role.",
+    "PasswordPolicy": {
+      "Enabled": true,
+      "MinLength": 12,
+      "Complexity": true,
+      "HistoryCount": 24,
+      "MinAgeDays": 1,
+      "MaxAgeDays": 90
+    },
+    "Lockout": {
+      "Enabled": true,
+      "Threshold": 5,
+      "DurationMinutes": 15,
+      "ResetAfterMinutes": 15
+    },
+    "SharedWorkstations": {
+      "Enabled": true,
+      "GpoName": "Postes-Partages",
+      "LockAfterMinutes": 5,
+      "SleepAfterMinutes": 15,
+      "PasswordOnWake": true
+    },
+    "LocalAdmins": {
+      "Enabled": true,
+      "GpoName": "Postes-AdminsLocaux",
+      "Group": "GG-PC-Admins",
+      "Mode": "Exclusive",
+      "ExtraMembers": []
+    },
+    "AlwaysOn": {
+      "Enabled": true,
+      "GpoName": "Postes-Techniciens",
+      "SubOU": "Technicien"
+    },
+    "ServerRemoteDesktop": {
+      "Enabled": true,
+      "Users": ["biologiste001"]
+    }
+  },
+
+  "LAPS": {
+    "_comment": "Step 11 (optional, OFF by default). Windows LAPS gives each workstation's local AccountName a random password, stored in AD on the computer object and rotated automatically. To use the local rescue account admin-sama: set Enabled=true here AND tick 'create admin-sama' when joining each PC (Join-Domain.ps1 -CreateLocalAdmin). Step 11 also adds AccountName to the Exclusive local-admins GPO. An empty value keeps the Windows LAPS default (length 14, complexity 4, age 30 days). PasswordComplexity: 1=upper, 2=upper+lower, 3=+digits, 4=+symbols. ReadersGroup can read/reset the passwords (Get-LapsADPassword -Identity PC -AsPlainText). EncryptPasswords needs domain level 2016+; only ReadersGroup can then decrypt. PostAuthenticationActions after someone uses the password: 1=new password, 3=new password + log off, 5=new password + reboot; PostAuthenticationResetDelayHours = when.",
+    "Enabled": false,
+    "GpoName": "Postes-LAPS",
+    "AccountName": "admin-sama",
+    "ReadersGroup": "GG-PC-Admins",
+    "PasswordLength": 15,
+    "PasswordComplexity": 4,
+    "PasswordAgeDays": 30,
+    "EncryptPasswords": true,
+    "PostAuthenticationActions": 3,
+    "PostAuthenticationResetDelayHours": 24
   },
 
   "SQL": {
     "Install": true,
-    "_comment": "InstallFolder is both where the ISO is looked for and where SQL installs. Step 8 uses InstallFolder\\SQL_Server_Install.iso, else any .iso over 300 MB in that folder (so a hand-copied ISO works under any name), else downloads DownloadUrl. Leave DownloadUrl empty to install strictly from a staged ISO.",
+    "_comment": "InstallFolder is both where the ISO is looked for and where SQL installs. Step 13 uses InstallFolder\\SQL_Server_Install.iso, else any .iso over 300 MB in that folder (so a hand-copied ISO works under any name), else downloads DownloadUrl. Leave DownloadUrl empty to install strictly from a staged ISO.",
     "DownloadUrl": "https://burdpme.sage.com.dl1.ipercast.net/PME/Serveurs/SQL_Std_2019Dec_64Bit_French.iso",
     "InstallFolder": "D:\\Utilitaire\\software\\sql",
     "InstanceName": "SQLEXPRESS",
@@ -41,7 +140,7 @@
   },
 
   "Staging": {
-    "_comment": "Step 6b - robocopy folders off removable media onto the server disk BEFORE SQL installs. SourceRoot is the USB key, DestinationRoot the internal disk; each Folders entry is copied SourceRoot\\<name> -> DestinationRoot\\<name>. Empty Folders = every top-level folder on the media. ExcludeFiles takes robocopy /XF patterns.",
+    "_comment": "Step 12, first half - robocopy folders off removable media onto the server disk BEFORE SQL installs. SourceRoot is the USB key, DestinationRoot the internal disk; each Folders entry is copied SourceRoot\\<name> -> DestinationRoot\\<name>. Empty Folders = every top-level folder on the media. ExcludeFiles takes robocopy /XF patterns.",
     "Enabled": true,
     "SourceRoot": "E:\\",
     "DestinationRoot": "D:\\",
@@ -50,7 +149,7 @@
   },
 
   "FileShares": {
-    "_comment": "Step 7, second half: create each Path, set its NTFS rights, and share it as ShareName over SMB. Leave ShareName empty to create the folder without sharing. Access lists take bare group names (GG_Technicien) resolved against the real domain NetBIOS name, or fully qualified DOMAIN\\Group; well-known groups such as Domain Admins are auto-corrected to their real, possibly localized name. FullAccess=FullControl, ChangeAccess=Modify, ReadAccess=ReadAndExecute. ApplyNtfs true rebuilds the folder ACL from these lists (inheritance broken; SYSTEM and Administrators always kept) - set false to write share permissions only. The GG_* department groups are created in step 6. Copying is done by the Staging section above.",
+    "_comment": "Step 12, second half: create each Path, set its NTFS rights, and share it as ShareName over SMB. Leave ShareName empty to create the folder without sharing. Access lists take bare group names (GG-Techniciens) resolved against the real domain NetBIOS name, or fully qualified DOMAIN\\Group; well-known groups such as Domain Admins are auto-corrected to their real, possibly localized name. FullAccess=FullControl, ChangeAccess=Modify, ReadAccess=ReadAndExecute. ApplyNtfs true rebuilds the folder ACL from these lists (inheritance broken; SYSTEM and Administrators always kept) - set false to write share permissions only. The GG-* role groups are created in step 7 (Directory section). Copying is done by the Staging section above.",
     "Enabled": true,
     "ApplyNtfs": true,
     "Items": [
@@ -59,14 +158,14 @@
         "ShareName": "Labo",
         "Description": "Dossier partage du laboratoire",
         "FullAccess": ["Domain Admins"],
-        "ChangeAccess": ["GG_Technicien", "GG_Biologiste"],
-        "ReadAccess": ["GG_Accueil"]
+        "ChangeAccess": ["GG-Techniciens", "GG-Biologistes"],
+        "ReadAccess": ["GG-Accueil", "GG-Preleveurs"]
       }
     ]
   },
 
   "Database": {
-    "_comment": "Order: restore each Restores[].BakFile (found in BackupFolder) as DatabaseName relocating its files to DataFolder; set Mixed-Mode and restart SQL; run CustomSqlScript verbatim (inline T-SQL or a .sql path, GO separators supported); create SqlLogin only if Create is true; finally grant SqlLogin.Name db_owner on DbOwnerOf. The db_owner grant runs even when Create is false, so a login created by CustomSqlScript still gets ownership. A bare CREATE LOGIN in CustomSqlScript is not re-runnable - guard it with IF NOT EXISTS if step 9 may run twice.",
+    "_comment": "Order: restore each Restores[].BakFile (found in BackupFolder) as DatabaseName relocating its files to DataFolder; set Mixed-Mode and restart SQL; run CustomSqlScript verbatim (inline T-SQL or a .sql path, GO separators supported); create SqlLogin only if Create is true; finally grant SqlLogin.Name db_owner on DbOwnerOf. The db_owner grant runs even when Create is false, so a login created by CustomSqlScript still gets ownership. A bare CREATE LOGIN in CustomSqlScript is not re-runnable - guard it with IF NOT EXISTS if step 14 may run twice.",
     "Enabled": true,
     "Server": ".\\SQLEXPRESS",
     "InstanceName": "SQLEXPRESS",

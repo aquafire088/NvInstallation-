@@ -137,7 +137,8 @@ function Register-ResumeTask {
     param([string]$DeployScript, [string]$ConfigPath)
 
     $psExe  = (Get-Command powershell.exe).Source
-    $arg    = "-NoProfile -ExecutionPolicy Bypass -File `"$DeployScript`" -Resume -Config `"$ConfigPath`""
+    # -NonInteractive: nobody sees this session, so a prompt must fail the step, not hang it.
+    $arg    = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$DeployScript`" -Resume -Config `"$ConfigPath`""
     $action = New-ScheduledTaskAction -Execute $psExe -Argument $arg
     $trigger   = New-ScheduledTaskTrigger -AtStartup
     $principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
@@ -204,6 +205,71 @@ function Get-ServerNetworkInfo {
         Gateway   = (Get-NetIPConfiguration -InterfaceIndex $adapter.IfIndex -ErrorAction SilentlyContinue).IPv4DefaultGateway.NextHop | Select-Object -First 1
         Adapter   = $adapter
     }
+}
+
+# ============================================================
+# Directory section (steps 6-11). Parses the JSON passed by Deploy.ps1
+# and fills the OU names the spec fixes, so a partial config still works.
+# DNs come from AD itself, never from the FQDN string.
+# ============================================================
+function ConvertFrom-DirectoryJson {
+    param([string]$Json)
+    $dir = $Json | ConvertFrom-Json
+    $defaults = @{ Users = "Utilisateurs"; Groups = "Groupes"; Admins = "Administrateurs"; Computers = "Postes" }
+    if (-not $dir.OUs) { $dir | Add-Member -NotePropertyName OUs -NotePropertyValue ([pscustomobject]@{}) }
+    foreach ($k in $defaults.Keys) {
+        if ([string]::IsNullOrWhiteSpace($dir.OUs.$k)) {
+            $dir.OUs | Add-Member -NotePropertyName $k -NotePropertyValue $defaults[$k] -Force
+        }
+    }
+    return $dir
+}
+
+# "Postes" -> OU=Postes,DC=DOMLABO,DC=LOCAL ; ("Technicien","Utilisateurs") -> nested.
+function Get-LabOUDN {
+    param([string]$Name, [string]$Parent = "")
+    $base = (Get-ADDomain).DistinguishedName
+    if ($Parent) { return "OU=$Name,OU=$Parent,$base" }
+    return "OU=$Name,$base"
+}
+
+# ============================================================
+# GPO files edited outside GPMC (steps 10-11)
+# ============================================================
+$script:SecurityCse = "[{827D319E-6EAC-11D2-A4EA-00C04F79F83A}{803E14A0-B4FB-11D0-A0D0-00A0C90F574B}]"
+
+function Get-GpoAdObject {
+    param([string]$Id)
+    $dn = "CN={$Id},CN=Policies,CN=System,$((Get-ADDomain).DistinguishedName)"
+    return Get-ADObject -Identity $dn -Properties versionNumber, gPCFileSysPath, gPCMachineExtensionNames
+}
+
+function Get-GpoInfPath {
+    param([string]$Id)
+    $o = Get-GpoAdObject -Id $Id
+    return Join-Path $o.gPCFileSysPath "Machine\Microsoft\Windows NT\SecEdit\GptTmpl.inf"
+}
+
+# A GPO edited outside GPMC must get its machine version bumped (AD + GPT.INI)
+# and list the Security CSE, or clients never notice the change.
+function Update-GpoMachineVersion {
+    param([string]$Id)
+    $o = Get-GpoAdObject -Id $Id
+
+    $ext   = "$($o.gPCMachineExtensionNames)"
+    $pairs = @([regex]::Matches($ext, '\[[^\]]+\]') | ForEach-Object { $_.Value })
+    if ($pairs -notcontains $script:SecurityCse) {
+        $pairs = @($pairs + $script:SecurityCse | Sort-Object)
+        Set-ADObject -Identity $o.DistinguishedName -Replace @{ gPCMachineExtensionNames = ($pairs -join '') }
+    }
+
+    $new = [int]$o.versionNumber + 1
+    Set-ADObject -Identity $o.DistinguishedName -Replace @{ versionNumber = $new }
+    $gptIni = Join-Path $o.gPCFileSysPath "GPT.INI"
+    $ini = if (Test-Path $gptIni) { Get-Content $gptIni -Raw } else { "[General]`r`n" }
+    if ($ini -match '(?m)^Version=\d+') { $ini = $ini -replace '(?m)^Version=\d+', "Version=$new" }
+    else { $ini = $ini.TrimEnd() + "`r`nVersion=$new`r`n" }
+    Set-Content -Path $gptIni -Value $ini -Encoding ASCII -NoNewline
 }
 
 # ============================================================

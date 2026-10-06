@@ -42,7 +42,7 @@ The step scripts take parameters directly. Examples:
 
 **SQL + SSMS only:**
 ```powershell
-.\steps\Step8-InstallSQL.ps1 `
+.\steps\Step13-InstallSQL.ps1 `
   -DownloadUrl "https://burdpme.sage.com.dl1.ipercast.net/PME/Serveurs/SQL_Std_2019Dec_64Bit_French.iso" `
   -InstallFolder "C:\Utilitaire\software\sql" `
   -InstanceName "SQLEXPRESS" `

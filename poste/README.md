@@ -1,15 +1,24 @@
 # Workstation setup (`poste`)
 
-Sets up a lab desktop: **static IP → rename → join the domain**, in one run and
-one reboot.
+Sets up a lab desktop: **static IP + DNS (DC01, DC02) → IPv6 off → local rescue
+account `admin-sama` → rename + join into `OU Postes`**, in one run and one reboot.
+The GPOs and Windows LAPS linked to `OU Postes` apply at that reboot; LAPS then
+takes over the `admin-sama` password (it starts random and is never shown).
 
-Self-contained — copy only `Join-Domain.ps1` to the machine (USB, share, email).
-Nothing from `deploy\` is needed.
+Copy the whole `poste\` folder to the machine (USB, share). Nothing from
+`deploy\` is needed.
+
+## Easiest: the window
+
+Double-click **`Poste-Jonction.cmd`**. Windows asks for administrator rights, then
+a form opens (French / English) with the lab defaults filled in. Enter the computer
+name and IP, click **Joindre au domaine**, give a domain account (`ad-sama`), and
+answer *Yes* to restart. The log shows every step.
 
 ## Before you start
 
 The server must already be a working domain controller (`deploy\` finished
-through step 6), and the workstation must be on the same network as it.
+through step 8 — OUs, groups and users exist), and the workstation must be on the same network as it.
 
 ## Run it
 
@@ -23,7 +32,9 @@ Set-ExecutionPolicy Bypass -Scope Process -Force
 It prompts for domain credentials, then offers to restart.
 
 Anything not passed uses the lab defaults: mask `255.255.255.0`, gateway
-`192.168.1.1`, DNS/DC `192.168.1.250`, domain `DOMLABO.LOCAL`.
+`192.168.1.1`, DNS/DC `192.168.1.250`, no DNS 2, domain `DOMLABO.LOCAL`,
+OU `OU=Postes,<domain>`, IPv6 off, rescue account `admin-sama`. Pass
+`-LocalAdminName ""` to skip the rescue account, `-Credential` to skip the prompt.
 
 Full form:
 
@@ -34,8 +45,11 @@ Full form:
   -SubnetMask 255.255.255.0 `
   -Gateway    192.168.1.1 `
   -DNSServer  192.168.1.250 `
+  -DNSServer2 192.168.1.251 `
   -DomainName DOMLABO.LOCAL `
-  -OUPath     "OU=Technicien,DC=DOMLABO,DC=LOCAL"
+  -OUPath     "OU=Postes,DC=DOMLABO,DC=LOCAL" `
+  -LocalAdminName admin-sama `
+  -DisableIPv6 $true
 ```
 
 `-OUPath` drops the computer account straight into the department OU.

@@ -1,5 +1,5 @@
 # ----------------------
-# Step 9: Restore databases and create SQL login(s)
+# Step 14: Restore databases and create SQL login(s)
 # Driven by the Database section of config.json (passed as JSON).
 #   - Restores each .bak (relocating data/log files to DataFolder)
 #   - Optionally creates a SQL login and makes it db_owner of given DBs
@@ -13,7 +13,7 @@ param(
 . (Join-Path (Split-Path -Parent $PSScriptRoot) "lib\Common.ps1")
 
 Assert-Administrator
-Write-Log "STEP 9: Restore databases & create SQL users" "STEP"
+Write-Log "STEP 14: Restore databases & create SQL users" "STEP"
 
 try { $db = $ConfigJson | ConvertFrom-Json }
 catch { Write-Log "Could not parse Database config JSON: $($_.Exception.Message)" "ERROR"; exit 1 }
@@ -279,7 +279,7 @@ END
 }
 
 if ($hadError) {
-    Write-Log "Step 9 finished with one or more errors (see above)." "ERROR"
+    Write-Log "Step 14 finished with one or more errors (see above)." "ERROR"
     exit 1
 }
 Write-Log "Databases restored and SQL users configured." "OK"
