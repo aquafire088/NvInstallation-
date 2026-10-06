@@ -60,16 +60,16 @@ everything is finished.
 |----|------|---------|-------|
 | 0-Update | Windows Update repair, DISM, .NET 3.5 | yes | Optional (`Options.RunTroubleshootUpdate`) |
 | 1-Network | Static IP, IPv6 off, rename PC + admin, RDP | yes | Renames the account last, then reboots |
-| 2-Services | .NET 3.5, AD DS, DNS, DHCP roles | yes | DHCP role skipped when `DHCP.Enabled` is false |
+| 2-Services | .NET 3.5, AD DS, DNS, DHCP role | yes | DHCP role only when `DHCP.InstallRole` (or `Configure`) is true |
 | 3-Domain | Promote to Domain Controller | yes | New forest, functional level 2016 |
 | 4-DNS | AD-integrated forward + reverse zones, forwarders, server DNS → `127.0.0.1` | no | Waits for AD |
-| 5-DHCP | Scope, exclusions, department policies | no | Optional (`DHCP.Enabled`) |
-| 6-Structure | OUs `Utilisateurs` (+ one sub-OU per role), `Groupes`, `Administrateurs`, `Postes`; new computers default to `Postes` | no | Waits for AD |
-| 7-Groups | `GG-<Role>` + `GG-PC-Admins` security groups in `OU Groupes` | no | |
-| 8-Users | Users in their role OU + role group; initial password, change at logon | no | `Directory.InitialPassword` |
-| 9-Admins | `ad-sama` in `OU Administrateurs` → Domain Admins + `GG-PC-Admins`; built-in Administrator untouched | no | `Directory.DomainAdmin` |
-| 10-GPO | Password + lockout policy (Default Domain Policy); GPOs *Postes-Partages* and *Postes-AdminsLocaux* on `OU Postes` | no | Each part optional (`Policy.*.Enabled`) |
-| 11-LAPS | Windows LAPS: schema, OU Postes permissions, GPO *Postes-LAPS* managing `admin-sama` | no | Optional (`LAPS.Enabled`) |
+| 5-DHCP | Scope, exclusions, department policies | no | Optional (`DHCP.Configure`, **off** by default) |
+| 6-Structure | OUs `Utilisateurs` (+ one sub-OU per role), `Groupes`, `Administrateurs`, `Postes` (+ `ComputerSubOUs`, e.g. `Technicien`); new computers default to `Postes` | no | Waits for AD |
+| 7-Groups | `GG-<Role>` + `GG-PC-Admins` security groups in `OU Groupes`; `ExtraGroups[].Members` added (`GG-PC-Admins` = `adcipro`) | no | |
+| 8-Users | Users in their role OU + role group; initial password, change at logon (or own `Password`, no change) | no | `Directory.InitialPassword` |
+| 9-Admins | `ad-sama` in `OU Administrateurs` → Domain Admins + `GG-PC-Admins`; built-in Administrator untouched | no | Optional (`Directory.DomainAdmin.Enabled`, **off**: `adcipro` is the only domain admin) |
+| 10-GPO | Password + lockout policy (Default Domain Policy); GPOs *Postes-Partages* and *Postes-AdminsLocaux* on `OU Postes`, *Postes-Techniciens* (never lock/sleep) on `Postes\Technicien`; Remote Desktop to the DC for named users | no | Each part optional (`Policy.*.Enabled`) |
+| 11-LAPS | Windows LAPS: schema, OU Postes permissions, GPO *Postes-LAPS* managing `admin-sama`; keeps `admin-sama` in the local-admins GPO | no | Optional (`LAPS.Enabled`, **off**) |
 | 12-Staging | robocopy USB → server disk, then SMB-share the folders | no | Copy: `Staging.Enabled`; shares: `FileShares.Enabled` |
 | 13-SQL | Install SQL Server (+ optional SSMS) | no | Optional (`SQL.Install`) |
 | 14-Database | Restore `.bak` files, run custom SQL, grant db_owner | no | Optional (`Database.Enabled`) |
@@ -95,21 +95,25 @@ breaks the two after it.
 | DNS | SecondaryDNS | Second resolver for the server after step 4 (DC02's IP); preferred is always `127.0.0.1` |
 | Directory | OUs | Names of the four functional OUs (keep the defaults) |
 | Directory | Roles[] | `Name` (sub-OU under Utilisateurs) + `Group` (e.g. `GG-Techniciens`) |
-| Directory | ExtraGroups[] | Other groups in `OU Groupes`, e.g. `GG-PC-Admins` |
+| Directory | ExtraGroups[] | Other groups in `OU Groupes`, e.g. `GG-PC-Admins`; optional `Members[]` (added, never removed) |
+| Directory | ComputerSubOUs[] | Sub-OUs under `Postes` (`Technicien`: always-on GPO; `Join-Domain.ps1` puts `TECH-*` PCs there) |
 | Directory | InitialPassword | Given to new users, who must change it at first logon; must meet complexity |
-| Directory | Users[] | `Username`, `FirstName`, `LastName`, `Role`, `Title` |
-| Directory | DomainAdmin | `Username`, `DisplayName`, `Password` (used only at creation), `MemberOf[]`; always added to Domain Admins |
+| Directory | Users[] | `Username`, `FirstName`, `LastName`, `Role`, `Title`; optional `Password`, `ChangePasswordAtLogon` (default true; false needs `Password` — required for RDP and auto-logon accounts), `PasswordNeverExpires` |
+| Directory | DomainAdmin | `Enabled` (false = skip step 9), `Username`, `DisplayName`, `Password` (used only at creation), `MemberOf[]`; always added to Domain Admins |
 | Policy | PasswordPolicy | `Enabled`, `MinLength`, `Complexity`, `HistoryCount`, `MinAgeDays`, `MaxAgeDays` |
 | Policy | Lockout | `Enabled`, `Threshold`, `DurationMinutes`, `ResetAfterMinutes` (≤ duration) |
 | Policy | SharedWorkstations | `Enabled`, `GpoName`, `LockAfterMinutes`, `SleepAfterMinutes`, `PasswordOnWake` |
-| Policy | LocalAdmins | `Enabled`, `GpoName`, `Group`, `Mode` (`Exclusive`/`Add`), `ExtraMembers[]` |
+| Policy | LocalAdmins | `Enabled`, `GpoName`, `Group`, `Mode` (`Exclusive`/`Add`), `ExtraMembers[]` (`admin-sama` is added by step 11) |
+| Policy | AlwaysOn | `Enabled`, `GpoName`, `SubOU` (listed in `Directory.ComputerSubOUs`): never lock, never sleep, screen always on |
+| Policy | ServerRemoteDesktop | `Enabled`, `Users[]`: non-admin users allowed to RDP to the DC (2 sessions at once without the RDS role) |
 | Policy | *(any)* | `Enabled: false` or an empty value = **Windows standard kept**; turning off later does not undo a previous run |
-| LAPS | Enabled | `false` skips step 11; local admin passwords are then not managed |
+| LAPS | Enabled | Default `false`. `true` + "create the rescue account" ticked at join (`-CreateLocalAdmin`) = `admin-sama` managed by LAPS |
 | LAPS | AccountName / ReadersGroup | Managed local account (`admin-sama`) / who can read + reset (`GG-PC-Admins`) |
 | LAPS | PasswordLength / PasswordComplexity / PasswordAgeDays | Empty = Windows LAPS default (14 / 4 / 30) |
 | LAPS | EncryptPasswords | Needs domain level 2016+ (default since this version); only ReadersGroup can decrypt |
 | LAPS | PostAuthenticationActions / ...ResetDelayHours | After the password is used: 1 new pwd, 3 + log off, 5 + reboot; after N hours |
-| DHCP | Enabled | `false` skips step 5 **and** the DHCP role in step 2 |
+| DHCP | InstallRole | Step 2 installs the DHCP role only (no scope, hands out nothing). Default `false` |
+| DHCP | Configure | Step 5 creates the scope + authorises the server (implies InstallRole). Default `false`; only if no other DHCP server is on the network. Old `Enabled: true` = both |
 | Staging | Enabled | `false` skips the robocopy half of step 12 |
 | Staging | SourceRoot / DestinationRoot | USB root → server disk root (e.g. `E:\` → `D:\`) |
 | Staging | Folders | Copied `Source\<name>` → `Dest\<name>`; empty = every top-level folder |

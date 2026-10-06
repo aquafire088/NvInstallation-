@@ -9,6 +9,10 @@
 #   3) ReadersGroup (GG-PC-Admins) may read / reset those passwords.
 #   4) GPO "Postes-LAPS" on OU Postes: which local account to manage
 #      (admin-sama), backup to AD, length, complexity, age, encryption.
+#   5) admin-sama added to step 10's Exclusive local-admins GPO.
+#
+# OFF by default: admin-sama exists only on PCs joined with the
+# "create admin-sama" option (Join-Domain.ps1 -CreateLocalAdmin).
 #
 # Windows LAPS = the built-in one (Server 2022 / Win 11 with April 2023+
 # updates), NOT the legacy "Microsoft LAPS" MSI. The account itself is
@@ -17,7 +21,8 @@
 # ----------------------
 param(
     [Parameter(Mandatory)] [string]$DirectoryJson,
-    [string]$LapsJson = "{}"
+    [string]$LapsJson = "{}",
+    [string]$PolicyJson = "{}"
 )
 . (Join-Path (Split-Path -Parent $PSScriptRoot) "lib\Common.ps1")
 
@@ -119,6 +124,39 @@ try {
     }
     elseif ($laps.EncryptPasswords -eq $false) {
         Set-Laps -Name "ADPasswordEncryptionEnabled" -Value 0
+    }
+
+    # --- 5) Keep the account in local Administrators ---------------------
+    # Step 10's Exclusive local-admins GPO rebuilds Administrators on every
+    # refresh and would remove admin-sama. Added here (not in step 10) so that
+    # enabling LAPS on an already-deployed server still fixes the GPO.
+    $policy = $PolicyJson | ConvertFrom-Json
+    $la = $policy.LocalAdmins
+    if ($la -and $la.Enabled -eq $true -and "$($la.Mode)" -ine "Add") {
+        $laName = if ($la.GpoName) { $la.GpoName } else { "Postes-AdminsLocaux" }
+        $laGpo  = Get-GPO -Name $laName -ErrorAction SilentlyContinue
+        $inf    = if ($laGpo) { Get-GpoInfPath -Id $laGpo.Id.ToString() } else { $null }
+        if (-not $inf -or -not (Test-Path $inf)) {
+            Write-Log "GPO '$laName' not found - run step 10 before step 11, or '$account' will not stay local admin." "WARN"
+        }
+        else {
+            $lines = @(Get-Content $inf -Encoding Unicode)
+            $i = -1
+            for ($j = 0; $j -lt $lines.Count; $j++) { if ($lines[$j] -match '^\s*\*S-1-5-32-544__Members\s*=') { $i = $j; break } }
+            $members = if ($i -ge 0) { @(($lines[$i] -split '=', 2)[1].Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }) } else { @() }
+            if ($i -lt 0) {
+                Write-Log "$($laName): no Administrators member list found - '$account' not added." "WARN"
+            }
+            elseif ($members -contains $account) {
+                Write-Log "$($laName): '$account' already a local administrator." "OK"
+            }
+            else {
+                $lines[$i] = "*S-1-5-32-544__Members = " + ((@($members) + $account) -join ',')
+                Set-Content -Path $inf -Value $lines -Encoding Unicode
+                Update-GpoMachineVersion -Id $laGpo.Id.ToString()
+                Write-Log "$($laName): '$account' added to the local Administrators list." "OK"
+            }
+        }
     }
 
     Write-Log "Windows LAPS ready. Read a password with: Get-LapsADPassword -Identity <PC> -AsPlainText" "OK"

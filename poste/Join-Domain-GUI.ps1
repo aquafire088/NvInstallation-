@@ -113,14 +113,18 @@ $Strings = @{
     'dns1'       = @('DNS 1 (DC01)', 'DNS 1 (DC01)')
     'dns2'       = @('DNS 2 (DC02, facultatif)', 'DNS 2 (DC02, optional)')
     'domain'     = @('Domaine', 'Domain')
-    'ou'         = @('OU (vide = OU Postes)', 'OU (blank = OU Postes)')
+    'ou'         = @('OU (vide = Postes ; TECH-* = Postes\Technicien)', 'OU (blank = Postes; TECH-* = Postes\Technicien)')
     'localadmin' = @('Compte de secours local', 'Local rescue account')
+    'createla'   = @('Créer le compte de secours (LAPS doit être activé sur le serveur)', 'Create the rescue account (LAPS must be enabled on the server)')
+    'autouser'   = @('Ouverture auto : compte (vide = non)', 'Auto-logon: account (blank = no)')
+    'autopwd'    = @('Ouverture auto : mot de passe', 'Auto-logon: password')
+    'needAutoPwd'= @("Indiquez le mot de passe du compte d'ouverture automatique.", 'Enter the auto-logon account password.')
     'ipv6'       = @('Désactiver IPv6', 'Disable IPv6')
     'join'       = @('Joindre au domaine', 'Join the domain')
     'close'      = @('Fermer', 'Close')
     'log'        = @('Journal', 'Log')
     'needName'   = @('Indiquez le nom du poste et son adresse IP.', 'Enter the computer name and its IP address.')
-    'credMsg'    = @('Compte du domaine autorisé à joindre des postes (ex. ad-sama)', 'Domain account allowed to join computers (e.g. ad-sama)')
+    'credMsg'    = @('Compte du domaine autorisé à joindre des postes (adcipro)', 'Domain account allowed to join computers (adcipro)')
     'noCred'     = @('Aucun identifiant fourni.', 'No credentials supplied.')
     'running'    = @('Jonction en cours...', 'Joining...')
     'okRestart'  = @("Le poste a rejoint le domaine.`nRedémarrer maintenant ? Les stratégies (GPO, LAPS) s'appliquent au redémarrage.", "The computer joined the domain.`nRestart now? Policies (GPO, LAPS) apply at restart.")
@@ -142,7 +146,7 @@ foreach ($p in $ast.ParamBlock.Parameters) {
 [xml]$xaml = @'
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Width="620" Height="700" WindowStartupLocation="CenterScreen" FontSize="13" Background="#F4F6FA">
+        Width="660" Height="800" WindowStartupLocation="CenterScreen" FontSize="13" Background="#F4F6FA">
   <Grid Margin="16">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
@@ -160,6 +164,7 @@ foreach ($p in $ast.ParamBlock.Parameters) {
       <Grid.RowDefinitions>
         <RowDefinition Height="32"/><RowDefinition Height="32"/><RowDefinition Height="32"/><RowDefinition Height="32"/>
         <RowDefinition Height="32"/><RowDefinition Height="32"/><RowDefinition Height="32"/><RowDefinition Height="32"/><RowDefinition Height="32"/>
+        <RowDefinition Height="32"/><RowDefinition Height="32"/><RowDefinition Height="32"/>
       </Grid.RowDefinitions>
       <TextBlock Grid.Row="0" Tag="L:hostname"   VerticalAlignment="Center"/><TextBox Grid.Row="0" Grid.Column="1" x:Name="Hostname" Margin="0,3" CharacterCasing="Upper" MaxLength="15"/>
       <TextBlock Grid.Row="1" Tag="L:ip"         VerticalAlignment="Center"/><TextBox Grid.Row="1" Grid.Column="1" x:Name="IPAddress" Margin="0,3"/>
@@ -169,7 +174,10 @@ foreach ($p in $ast.ParamBlock.Parameters) {
       <TextBlock Grid.Row="5" Tag="L:dns2"       VerticalAlignment="Center"/><TextBox Grid.Row="5" Grid.Column="1" x:Name="DNSServer2" Margin="0,3"/>
       <TextBlock Grid.Row="6" Tag="L:domain"     VerticalAlignment="Center"/><TextBox Grid.Row="6" Grid.Column="1" x:Name="DomainName" Margin="0,3"/>
       <TextBlock Grid.Row="7" Tag="L:ou"         VerticalAlignment="Center"/><TextBox Grid.Row="7" Grid.Column="1" x:Name="OUPath" Margin="0,3"/>
-      <TextBlock Grid.Row="8" Tag="L:localadmin" VerticalAlignment="Center"/><TextBox Grid.Row="8" Grid.Column="1" x:Name="LocalAdminName" Margin="0,3"/>
+      <CheckBox  Grid.Row="8" Grid.ColumnSpan="2" x:Name="CreateLocalAdmin" Tag="L:createla" IsChecked="False" VerticalAlignment="Center"/>
+      <TextBlock Grid.Row="9" Tag="L:localadmin" VerticalAlignment="Center"/><TextBox Grid.Row="9" Grid.Column="1" x:Name="LocalAdminName" Margin="0,3" IsEnabled="False"/>
+      <TextBlock Grid.Row="10" Tag="L:autouser"  VerticalAlignment="Center"/><TextBox Grid.Row="10" Grid.Column="1" x:Name="AutoLogonUser" Margin="0,3"/>
+      <TextBlock Grid.Row="11" Tag="L:autopwd"   VerticalAlignment="Center"/><PasswordBox Grid.Row="11" Grid.Column="1" x:Name="AutoLogonPassword" Margin="0,3"/>
     </Grid>
     <CheckBox Grid.Row="2" x:Name="DisableIPv6" Tag="L:ipv6" IsChecked="True" Margin="0,10,0,6"/>
     <GroupBox Grid.Row="3" Tag="L:log" Margin="0,6,0,10">
@@ -186,7 +194,7 @@ foreach ($p in $ast.ParamBlock.Parameters) {
 '@
 $win = [Windows.Markup.XamlReader]::Load((New-Object System.Xml.XmlNodeReader $xaml))
 $ui = @{}
-foreach ($n in 'LangBox','TitleText','Hostname','IPAddress','SubnetMask','Gateway','DNSServer','DNSServer2','DomainName','OUPath','LocalAdminName','DisableIPv6','LogBox','OpenLog','JoinBtn','CloseBtn') {
+foreach ($n in 'LangBox','TitleText','Hostname','IPAddress','SubnetMask','Gateway','DNSServer','DNSServer2','DomainName','OUPath','CreateLocalAdmin','LocalAdminName','AutoLogonUser','AutoLogonPassword','DisableIPv6','LogBox','OpenLog','JoinBtn','CloseBtn') {
     $ui[$n] = $win.FindName($n)
 }
 Write-GuiLog "Window   : built, missing controls: $(@($ui.Keys | Where-Object { -not $ui[$_] }) -join ',')"
@@ -266,7 +274,12 @@ $ui.JoinBtn.add_Click({ Invoke-Logged 'Join' {
         [void][System.Windows.MessageBox]::Show((T 'needName'), (T 'title'), 'OK', 'Warning'); return
     }
     # UPN form is always valid, unlike a NetBIOS name guessed from the FQDN.
-    $cred = Get-Credential -UserName "ad-sama@$($ui.DomainName.Text.Trim())" -Message (T 'credMsg')
+    $autoUser = $ui.AutoLogonUser.Text.Trim()
+    if ($autoUser -and $ui.AutoLogonPassword.SecurePassword.Length -eq 0) {
+        Write-GuiLog 'Join     : auto-logon password missing' 'WARN'
+        [void][System.Windows.MessageBox]::Show((T 'needAutoPwd'), (T 'title'), 'OK', 'Warning'); return
+    }
+    $cred = Get-Credential -UserName "adcipro@$($ui.DomainName.Text.Trim())" -Message (T 'credMsg')
     if (-not $cred) { Write-GuiLog 'Join     : credential prompt cancelled' 'WARN'; Add-Log (T 'noCred'); return }
 
     $params = @{
@@ -278,12 +291,17 @@ $ui.JoinBtn.add_Click({ Invoke-Logged 'Join' {
         DNSServer2     = $ui.DNSServer2.Text.Trim()
         DomainName     = $ui.DomainName.Text.Trim()
         OUPath         = $ui.OUPath.Text.Trim()
+        CreateLocalAdmin = [bool]$ui.CreateLocalAdmin.IsChecked
         LocalAdminName = $ui.LocalAdminName.Text.Trim()
         DisableIPv6    = [bool]$ui.DisableIPv6.IsChecked
         Credential     = $cred
         NoReboot       = $true
     }
-    $shown = ($params.GetEnumerator() | Where-Object { $_.Key -ne 'Credential' } | Sort-Object Key | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ' '
+    if ($autoUser) {
+        $params.AutoLogonUser     = $autoUser
+        $params.AutoLogonPassword = $ui.AutoLogonPassword.SecurePassword
+    }
+    $shown = ($params.GetEnumerator() | Where-Object { $_.Key -notin 'Credential', 'AutoLogonPassword' } | Sort-Object Key | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join ' '
     Write-GuiLog "Join     : start as $($cred.UserName) | $shown"
     $ui.LogBox.Clear()
     Add-Log (T 'running')
@@ -299,6 +317,7 @@ $ui.JoinBtn.add_Click({ Invoke-Logged 'Join' {
 } })
 
 $ui.CloseBtn.add_Click({ $win.Close() })
+$ui.CreateLocalAdmin.add_Click({ $ui.LocalAdminName.IsEnabled = [bool]$ui.CreateLocalAdmin.IsChecked })
 $ui.LangBox.add_SelectionChanged({ Invoke-Logged "Language $($ui.LangBox.SelectedIndex)" { Set-Language $ui.LangBox.SelectedIndex } })
 
 Set-Language 0

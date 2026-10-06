@@ -27,12 +27,13 @@
   },
 
   "DHCP": {
-    "_comment": "false skips step 5 AND the DHCP role install in step 2 - use it when something else on the network already serves DHCP.",
-    "Enabled": true
+    "_comment": "Two switches, both OFF when false or missing. InstallRole: step 2 installs the DHCP Server role only - no scope, not authorised, it hands out NO address. Configure: step 5 creates the scope and authorises the server (implies InstallRole) - leave false until step 5 is rewritten, and never set it while another DHCP server (box, router) is active on the same network. Workstations joined with poste\\Join-Domain.ps1 use static IPs and do not need DHCP. The older Enabled=true still means both.",
+    "InstallRole": true,
+    "Configure": false
   },
 
   "Directory": {
-    "_comment": "Steps 6-8 (required). OUs: the four functional top-level OUs - keep the names, later steps link GPOs and LAPS to Computers/Admins. Roles: one sub-OU under OUs.Users and one global security group each; rights are granted to these groups, never to users. ExtraGroups: other groups created in OUs.Groups (GG-PC-Admins = the only local-admin group on workstations). InitialPassword: given to every NEW user (and to v1 users that had no password), who must change it at first logon - it must satisfy the domain complexity policy. Existing users keep their password. Users[].Role must match a Roles[].Name.",
+    "_comment": "Steps 6-8 (required). OUs: the four functional top-level OUs - keep the names, later steps link GPOs and LAPS to Computers/Admins. ComputerSubOUs: optional sub-OUs created under OUs.Computers (Technicien = always-on GPO, Policy.AlwaysOn; Join-Domain.ps1 puts TECH-* PCs there). Roles: one sub-OU under OUs.Users and one global security group each; rights are granted to these groups, never to users. ExtraGroups: other groups created in OUs.Groups, Members are added to them (GG-PC-Admins = the only local-admin group on workstations; adcipro = the built-in Administrator). InitialPassword: given to every NEW user (and to v1 users that had no password), who must change it at first logon - it must satisfy the domain complexity policy. Existing users keep their password. Users[].Role must match a Roles[].Name. Optional per user: Password (own password instead of InitialPassword), ChangePasswordAtLogon (default true; false REQUIRES Password - needed for Remote Desktop and auto-logon accounts), PasswordNeverExpires (default false; true for auto-logon accounts).",
     "OUs": {
       "Users": "Utilisateurs",
       "Groups": "Groupes",
@@ -46,11 +47,13 @@
       { "Name": "Preleveur",  "Group": "GG-Preleveurs" }
     ],
     "ExtraGroups": [
-      { "Name": "GG-PC-Admins", "Description": "Administrateurs locaux des postes (GPO + LAPS)" }
+      { "Name": "GG-PC-Admins", "Description": "Administrateurs locaux des postes (GPO + LAPS)", "Members": ["adcipro"] }
     ],
     "InitialPassword": "Prolab@2026!",
-    "_comment_DomainAdmin": "Step 9. Named domain admin for occasional use, created in OUs.Admins and added to Domain Admins (found by RID, so localized names don't matter) plus MemberOf. Password is used only when the account is created - an existing account keeps its own. Required: step 9 fails if Password is empty and the account does not exist yet. The built-in Administrator (Network.NewAdminUsername) is not touched.",
+    "ComputerSubOUs": ["Technicien"],
+    "_comment_DomainAdmin": "Step 9 (optional). Enabled=false: no extra domain admin, the built-in Administrator (Network.NewAdminUsername, adcipro) stays the only one. Enabled=true: the named account is created in OUs.Admins and added to Domain Admins (found by RID, so localized names don't matter) plus MemberOf. Password is used only when the account is created - an existing account keeps its own; step 9 fails if Password is empty and the account does not exist yet. The built-in Administrator is not touched.",
     "DomainAdmin": {
+      "Enabled": false,
       "Username": "ad-sama",
       "DisplayName": "Admin Sama Consulting",
       "Password": "",
@@ -63,12 +66,14 @@
       { "Username": "prev02",       "FirstName": "Preleveur",   "LastName": "02", "Role": "Preleveur",  "Title": "Preleveur" },
       { "Username": "tech01",       "FirstName": "Technicien",  "LastName": "01", "Role": "Technicien", "Title": "Technicien de Laboratoire" },
       { "Username": "tech02",       "FirstName": "Technicien",  "LastName": "02", "Role": "Technicien", "Title": "Technicien de Laboratoire" },
-      { "Username": "biologiste01", "FirstName": "Biologiste",  "LastName": "01", "Role": "Biologiste", "Title": "Biologiste" }
+      { "Username": "biologiste01", "FirstName": "Biologiste",  "LastName": "01", "Role": "Biologiste", "Title": "Biologiste" },
+      { "Username": "biologiste001", "FirstName": "Biologiste", "LastName": "001", "Role": "Biologiste", "Title": "Biologiste",
+        "Password": "", "ChangePasswordAtLogon": false, "PasswordNeverExpires": false }
     ]
   },
 
   "Policy": {
-    "_comment": "Step 10. Every section is OPTIONAL: set Enabled to false (or leave a value empty) and Windows keeps its standard setting. Windows standard on Server 2019/2022: min length 7, complexity on, history 24, max age 42 days, min age 1 day, NO lockout. Turning a section off later does not undo what a previous run applied. PasswordPolicy + Lockout are domain-wide (Default Domain Policy). SharedWorkstations and LocalAdmins are GPOs linked to the Postes OU. LocalAdmins.Mode: Exclusive = local Administrators holds ONLY Group + ExtraMembers (spec); Add = Group is added, existing members stay. ExtraMembers: AD names are resolved to SIDs, other names (admin-sama, a local account) are resolved on the workstation.",
+    "_comment": "Step 10. Every section is OPTIONAL: set Enabled to false (or leave a value empty) and Windows keeps its standard setting. Windows standard on Server 2019/2022: min length 7, complexity on, history 24, max age 42 days, min age 1 day, NO lockout. Turning a section off later does not undo what a previous run applied. PasswordPolicy + Lockout are domain-wide (Default Domain Policy). SharedWorkstations and LocalAdmins are GPOs linked to the Postes OU. LocalAdmins.Mode: Exclusive = local Administrators holds ONLY Group + ExtraMembers (spec); Add = Group is added, existing members stay. ExtraMembers: AD names are resolved to SIDs, other names (a local account) are resolved on the workstation; admin-sama is added by step 11 when LAPS is enabled. AlwaysOn: GPO on the Postes sub-OU SubOU (must be in Directory.ComputerSubOUs) - never lock, never sleep, screen always on; overrides SharedWorkstations there. ServerRemoteDesktop: Users (non-admin, from Directory.Users, with their own password and ChangePasswordAtLogon=false) may RDP to the domain controller; 2 sessions at the same time without the RDS role.",
     "PasswordPolicy": {
       "Enabled": true,
       "MinLength": 12,
@@ -95,13 +100,22 @@
       "GpoName": "Postes-AdminsLocaux",
       "Group": "GG-PC-Admins",
       "Mode": "Exclusive",
-      "ExtraMembers": ["admin-sama"]
+      "ExtraMembers": []
+    },
+    "AlwaysOn": {
+      "Enabled": true,
+      "GpoName": "Postes-Techniciens",
+      "SubOU": "Technicien"
+    },
+    "ServerRemoteDesktop": {
+      "Enabled": true,
+      "Users": ["biologiste001"]
     }
   },
 
   "LAPS": {
-    "_comment": "Step 11 (optional). Windows LAPS gives each workstation's local AccountName a random password, stored in AD on the computer object and rotated automatically. Enabled=false skips the step; an empty value keeps the Windows LAPS default (length 14, complexity 4, age 30 days). PasswordComplexity: 1=upper, 2=upper+lower, 3=+digits, 4=+symbols. ReadersGroup can read/reset the passwords (Get-LapsADPassword -Identity PC -AsPlainText). EncryptPasswords needs domain level 2016+; only ReadersGroup can then decrypt. PostAuthenticationActions after someone uses the password: 1=new password, 3=new password + log off, 5=new password + reboot; PostAuthenticationResetDelayHours = when. AccountName must exist on each PC - poste\\Join-Domain.ps1 creates it.",
-    "Enabled": true,
+    "_comment": "Step 11 (optional, OFF by default). Windows LAPS gives each workstation's local AccountName a random password, stored in AD on the computer object and rotated automatically. To use the local rescue account admin-sama: set Enabled=true here AND tick 'create admin-sama' when joining each PC (Join-Domain.ps1 -CreateLocalAdmin). Step 11 also adds AccountName to the Exclusive local-admins GPO. An empty value keeps the Windows LAPS default (length 14, complexity 4, age 30 days). PasswordComplexity: 1=upper, 2=upper+lower, 3=+digits, 4=+symbols. ReadersGroup can read/reset the passwords (Get-LapsADPassword -Identity PC -AsPlainText). EncryptPasswords needs domain level 2016+; only ReadersGroup can then decrypt. PostAuthenticationActions after someone uses the password: 1=new password, 3=new password + log off, 5=new password + reboot; PostAuthenticationResetDelayHours = when.",
+    "Enabled": false,
     "GpoName": "Postes-LAPS",
     "AccountName": "admin-sama",
     "ReadersGroup": "GG-PC-Admins",

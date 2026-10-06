@@ -80,8 +80,13 @@ $fileShareItemsJson = if ($cfg.FileShares -and $cfg.FileShares.Items) {
     @($cfg.FileShares.Items) | ConvertTo-Json -Depth 8
 } else { "[]" }
 
-# DHCP (steps 2 + 5) is optional; absent config means enabled (old behaviour).
-$dhcpEnabled = if ($null -ne $cfg.DHCP -and $null -ne $cfg.DHCP.Enabled) { [bool]$cfg.DHCP.Enabled } else { $true }
+# DHCP is two separate switches, both OFF unless set to true (workstations get
+# static IPs from Join-Domain.ps1):
+#   DHCP.InstallRole -> step 2 installs the role only (no scope, hands out nothing)
+#   DHCP.Configure   -> step 5 creates the scope (implies the role install)
+# The older DHCP.Enabled=true still means both.
+$dhcpConfigure = [bool]($cfg.DHCP -and ($cfg.DHCP.Configure -eq $true -or $cfg.DHCP.Enabled -eq $true))
+$dhcpInstall   = [bool]($cfg.DHCP -and $cfg.DHCP.InstallRole -eq $true) -or $dhcpConfigure
 
 # Staging (step 12) copies the USB key onto the server disk before SQL needs it.
 $stagingEnabled = [bool]($cfg.Staging -and $cfg.Staging.Enabled)
@@ -121,7 +126,7 @@ $plan = @(
     @{
         Id = "2-Services"; Name = "Install base roles"; Enabled = $true
         Script = "Step2-InstallServices.ps1"; RequiresAD = $false
-        Args = @{ InstallDHCP = $dhcpEnabled }
+        Args = @{ InstallDHCP = $dhcpInstall }
     },
     @{
         Id = "3-Domain"; Name = "Promote to Domain Controller"; Enabled = $true
@@ -143,7 +148,7 @@ $plan = @(
         }
     },
     @{
-        Id = "5-DHCP"; Name = "Configure DHCP"; Enabled = $dhcpEnabled
+        Id = "5-DHCP"; Name = "Configure DHCP"; Enabled = $dhcpConfigure
         Script = "Step5-ConfigureDHCP.ps1"; RequiresAD = $true
         Args = @{ DomainName = $cfg.Domain.DomainName; ServerIP = $cfg.Network.IPAddress }
     },
@@ -163,7 +168,9 @@ $plan = @(
         Args = @{ DirectoryJson = $directoryJson }
     },
     @{
-        Id = "9-Admins"; Name = "Domain admin account (ad-sama)"; Enabled = $true
+        Id = "9-Admins"; Name = "Domain admin account (ad-sama)"
+        # Optional: Enabled=false keeps the built-in Administrator (adcipro) as the only domain admin.
+        Enabled = $(if ($null -ne $cfg.Directory.DomainAdmin.Enabled) { [bool]$cfg.Directory.DomainAdmin.Enabled } else { $true })
         Script = "Step9-Admins.ps1"; RequiresAD = $true
         Args = @{ DirectoryJson = $directoryJson }
     },
@@ -177,7 +184,7 @@ $plan = @(
         # Not marked done while disabled, so enabling it later runs it on the next deploy.
         Enabled = [bool]($cfg.LAPS -and $cfg.LAPS.Enabled)
         Script = "Step11-LAPS.ps1"; RequiresAD = $true
-        Args = @{ DirectoryJson = $directoryJson; LapsJson = $lapsJson }
+        Args = @{ DirectoryJson = $directoryJson; LapsJson = $lapsJson; PolicyJson = $policyJson }
     },
     @{
         Id = "12-Staging"; Name = "Stage data from USB, then share it"

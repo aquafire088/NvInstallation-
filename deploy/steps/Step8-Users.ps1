@@ -5,6 +5,8 @@
 # member of its role group. Never PasswordNotRequired.
 # Existing accounts are moved/added as needed; their password is left alone,
 # EXCEPT v1 accounts created with no password, which get the initial one.
+# A user may instead have its own Password with ChangePasswordAtLogon=false
+# (needed for Remote Desktop and auto-logon accounts) and PasswordNeverExpires.
 # Exit: 0 = ok, 1 = error
 # ----------------------
 param(
@@ -39,6 +41,14 @@ try {
             $displayName = "$($u.FirstName) $($u.LastName)".Trim()
             $user = Get-ADUser -Filter "SamAccountName -eq '$($u.Username)'" -Properties PasswordNotRequired -ErrorAction SilentlyContinue
 
+            # Optional per user: own Password, ChangePasswordAtLogon=false, PasswordNeverExpires.
+            # Remote Desktop (NLA) and auto-logon both fail on a "must change password" account.
+            $mustChange = if ($null -ne $u.ChangePasswordAtLogon) { [bool]$u.ChangePasswordAtLogon } else { $true }
+            if (-not $mustChange -and [string]::IsNullOrWhiteSpace($u.Password)) {
+                throw "ChangePasswordAtLogon is false but Password is empty - set its own Password in config (the shared initial one is not allowed here)"
+            }
+            $userPwd = if ([string]::IsNullOrWhiteSpace($u.Password)) { $initialPwd } else { ConvertTo-SecureString $u.Password -AsPlainText -Force }
+
             if (-not $user) {
                 New-ADUser `
                     -SamAccountName        $u.Username `
@@ -49,12 +59,13 @@ try {
                     -DisplayName           $displayName `
                     -Department            $role.Name `
                     -Title                 $u.Title `
-                    -AccountPassword       $initialPwd `
-                    -ChangePasswordAtLogon $true `
+                    -AccountPassword       $userPwd `
+                    -ChangePasswordAtLogon $mustChange `
+                    -PasswordNeverExpires  ($u.PasswordNeverExpires -eq $true) `
                     -Enabled               $true `
                     -Path                  $ouDN `
                     -ErrorAction Stop
-                Write-Log "User created: $($u.Username) ($($role.Name)) - must change password at logon." "OK"
+                Write-Log "User created: $($u.Username) ($($role.Name))$(if ($mustChange) { ' - must change password at logon' } else { ' - own password, no change at logon' })." "OK"
             }
             else {
                 if ($user.DistinguishedName -notlike "*,$ouDN") {

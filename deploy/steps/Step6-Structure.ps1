@@ -1,6 +1,7 @@
 # ----------------------
 # Step 6: Functional OU structure (spec: "OU Utilisateurs / Groupes /
-# Administrateurs / Postes"), with one sub-OU per lab role under Utilisateurs.
+# Administrateurs / Postes"), with one sub-OU per lab role under Utilisateurs
+# and the optional computer sub-OUs (Directory.ComputerSubOUs) under Postes.
 # Also makes OU Postes the default home for newly joined computers (redircmp),
 # so a workstation joined without -OUPath still gets the Postes GPOs and LAPS.
 # Runs on the Domain Controller. Idempotent. Exit: 0 = ok, 1 = error
@@ -43,8 +44,14 @@ try {
         Confirm-OU -Name $role.Name -Path $usersDN -Description "Utilisateurs - $($role.Name)"
     }
 
-    # --- New computers land in OU Postes, not CN=Computers ---------------
+    # --- Optional sub-OUs under Postes (e.g. Technicien: always-on GPO) ---
     $postesDN = Get-LabOUDN -Name $dir.OUs.Computers
+    foreach ($sub in @($dir.ComputerSubOUs)) {
+        if ([string]::IsNullOrWhiteSpace($sub)) { continue }
+        Confirm-OU -Name $sub -Path $postesDN -Description "Postes - $sub"
+    }
+
+    # --- New computers land in OU Postes, not CN=Computers ---------------
     if ((Get-ADDomain).ComputersContainer -ieq $postesDN) {
         Write-Log "Default computer container already $postesDN." "OK"
     }

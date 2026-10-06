@@ -1,10 +1,11 @@
 # ----------------------
 # Step 2: Install base server roles (non-interactive)
-# .NET 3.5, AD DS, DNS, DHCP.
+# .NET 3.5, AD DS, DNS, and the DHCP role only when config DHCP.InstallRole
+# (or DHCP.Configure) is true. Configuring the scope is step 5.
 # Exit codes: 0 = done (no reboot), 3010 = done (reboot required), 1 = error
 # ----------------------
 param(
-    [bool]$InstallDHCP = $true
+    [bool]$InstallDHCP = $false
 )
 . (Join-Path (Split-Path -Parent $PSScriptRoot) "lib\Common.ps1")
 
@@ -46,7 +47,7 @@ try {
     if ($InstallDHCP) {
         Write-Log "Installing DHCP Server..." "INFO"
         Install-WindowsFeature -Name "DHCP" -IncludeManagementTools -ErrorAction Stop | Out-Null
-        Write-Log "DHCP Server installed." "OK"
+        Write-Log "DHCP Server role installed (no scope yet: it hands out nothing until step 5 runs with DHCP.Configure=true)." "OK"
     }
     else {
         Write-Log "DHCP disabled in config; skipping the DHCP role." "INFO"

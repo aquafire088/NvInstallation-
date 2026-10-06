@@ -142,12 +142,18 @@ $Strings = @{
     'cfg.sections'   = @('Sections', 'Sections')
     'cfg.missing'    = @("config.json est introuvable.`nLe créer à partir de config.sample.json ?", "config.json was not found.`nCreate it from config.sample.json?")
     'cfg.loaded'     = @('Fichier chargé : ', 'Loaded: ')
-    'cfg.saved'      = @('Configuration enregistrée (ancienne version : config.json.bak).', 'Configuration saved (previous version: config.json.bak).')
+    'cfg.saved'      = @('Configuration enregistrée (ancienne version : même nom + .bak).', 'Configuration saved (previous version: same name + .bak).')
     'cfg.errors'     = @('Problèmes trouvés :', 'Problems found:')
     'cfg.saveAnyway' = @('Enregistrer quand même ?', 'Save anyway?')
     'cfg.listHelp'   = @('Une valeur par ligne.', 'One value per line.')
     'cfg.gridHelp'   = @('Ajoutez une ligne dans la dernière ligne vide ; Suppr efface la ligne sélectionnée. Plusieurs valeurs dans une case : séparez-les par « ; ».', 'Add a row in the last empty row; Del removes the selected row. Several values in one cell: separate them with ";".')
-    'cfg.parseError' = @('config.json illisible : ', 'config.json cannot be read: ')
+    'cfg.parseError' = @('Fichier de configuration illisible : ', 'Configuration file cannot be read: ')
+    'cfg.file'       = @('Fichier :', 'File:')
+    'cfg.needOwnPwd' = @('« Changer le mdp » décoché : un mot de passe propre est obligatoire', '"Change pwd" unticked: its own password is required')
+    'cfg.notInUsers' = @("n'est pas dans Annuaire > Utilisateurs", 'is not in Directory > Users')
+    'cfg.notInSubOUs'= @("n'est pas dans Annuaire > Sous-OU de Postes", 'is not in Directory > Postes sub-OUs')
+    'cfg.dhcpConfigure' = @("l'étape 5 a des défauts connus (elle bloque sur « Condition: »), à réécrire avant de l'activer", 'step 5 has known bugs (it stops at "Condition:"), rewrite it before enabling')
+    'dep.file'       = @('Fichier de configuration : ', 'Configuration file: ')
     'dep.start'      = @('Démarrer / Reprendre', 'Start / Resume')
     'dep.reset'      = @("Réinitialiser l'état", 'Reset state')
     'dep.folder'     = @('Ouvrir le dossier', 'Open folder')
@@ -219,7 +225,7 @@ $KeyLabels = @{
     'OUs' = @('Unités d''organisation', 'Organizational units'); 'Users' = @('Utilisateurs', 'Users'); 'Groups' = @('Groupes', 'Groups')
     'Admins' = @('Administrateurs', 'Administrators'); 'Computers' = @('Postes', 'Computers'); 'Roles' = @('Rôles', 'Roles')
     'ExtraGroups' = @('Groupes supplémentaires', 'Extra groups'); 'InitialPassword' = @('Mot de passe initial', 'Initial password')
-    'DomainAdmin' = @('Administrateur du domaine (ad-sama)', 'Domain admin (ad-sama)'); 'Username' = @('Identifiant', 'Username')
+    'DomainAdmin' = @('Administrateur du domaine supplémentaire (ad-sama, facultatif)', 'Extra domain admin (ad-sama, optional)'); 'Username' = @('Identifiant', 'Username')
     'DisplayName' = @('Nom affiché', 'Display name'); 'Password' = @('Mot de passe', 'Password'); 'MemberOf' = @('Membre de', 'Member of')
     'PasswordPolicy' = @('Mots de passe', 'Passwords'); 'MinLength' = @('Longueur minimale', 'Minimum length')
     'Complexity' = @('Complexité', 'Complexity'); 'HistoryCount' = @('Historique', 'History'); 'MinAgeDays' = @('Durée minimale (jours)', 'Minimum age (days)')
@@ -235,6 +241,14 @@ $KeyLabels = @{
     'PasswordAgeDays' = @('Changement tous les (jours)', 'Rotate every (days)'); 'EncryptPasswords' = @('Chiffrer dans AD', 'Encrypt in AD')
     'PostAuthenticationActions' = @('Action après usage (1/3/5)', 'Action after use (1/3/5)')
     'PostAuthenticationResetDelayHours' = @('Délai avant action (heures)', 'Delay before action (hours)')
+    'InstallRole' = @('Installer le rôle DHCP (sans le configurer)', 'Install the DHCP role (not configured)')
+    'Configure' = @('Configurer DHCP (étape 5 - à réécrire avant usage)', 'Configure DHCP (step 5 - to be rewritten first)')
+    'ComputerSubOUs' = @('Sous-OU de Postes', 'Postes sub-OUs'); 'Members' = @('Membres', 'Members')
+    'ChangePasswordAtLogon' = @('Changer le mdp à la 1re connexion', 'Change pwd at first logon')
+    'PasswordNeverExpires' = @("Mot de passe n'expire jamais", 'Password never expires')
+    'AlwaysOn' = @('Postes toujours actifs (ni verrouillage, ni veille)', 'Always-on workstations (no lock, no sleep)')
+    'SubOU' = @('Sous-OU de Postes concernée', 'Postes sub-OU')
+    'ServerRemoteDesktop' = @('Bureau à distance vers le serveur', 'Remote Desktop to the server')
     'Install' = @('Installer', 'Install'); 'DownloadUrl' = @('URL de téléchargement', 'Download URL'); 'InstallFolder' = @("Dossier de l'ISO / installation", 'ISO / install folder')
     'InstanceName' = @("Nom d'instance", 'Instance name'); 'SAPassword' = @('Mot de passe sa', 'sa password'); 'DataFolder' = @('Dossier des données', 'Data folder')
     'InstallSSMS' = @('Installer SSMS', 'Install SSMS'); 'SSMSUrl' = @('URL SSMS', 'SSMS URL')
@@ -273,6 +287,8 @@ function L([string]$Key) { if ($KeyLabels.ContainsKey($Key)) { return $KeyLabels
               <Button x:Name="CfgReload" Tag="L:cfg.reload" Padding="14,5" Margin="0,0,8,0"/>
               <Button x:Name="CfgSave" Tag="L:cfg.save" Padding="14,5" Background="#4B3FD1" Foreground="White" FontWeight="SemiBold"/>
             </StackPanel>
+            <TextBlock Tag="L:cfg.file" VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <ComboBox x:Name="CfgFile" Width="190" Margin="0,0,12,0" VerticalAlignment="Center"/>
             <TextBlock x:Name="CfgStatus" VerticalAlignment="Center" Foreground="#555"/>
           </DockPanel>
           <Grid>
@@ -637,6 +653,9 @@ function Save-Grids {
                 $name = $col.ColumnName; $raw = $dr[$name]
                 $kind = $g.Kinds[$name]
                 if ($raw -is [DBNull]) { $raw = $null }
+                # A checkbox never set in this row stays absent, so the step's default applies
+                # (ChangePasswordAtLogon missing = true; writing false would break step 8).
+                if ($kind -eq 'bool' -and $null -eq $raw) { continue }
                 if ($null -ne $raw -and "$raw" -ne '' -and -not ($kind -eq 'bool' -and -not $raw)) { $empty = $false }
                 switch ($kind) {
                     'bool' { $o[$name] = [bool]$raw }
@@ -668,6 +687,7 @@ function Test-IPv4 { param([string]$V) return ($V -match '^(\d{1,3}\.){3}\d{1,3}
 function Test-Config {
     $errors = New-Object System.Collections.Generic.List[string]
     $c = $script:Cfg
+    $seen = @{}   # usernames, also used by the Remote Desktop check
     foreach ($k in 'IPAddress', 'SubnetMask', 'Gateway') {
         if (-not (Test-IPv4 "$($c.Network.$k)")) { $errors.Add("Network.$($k) : '$($c.Network.$k)'") }
     }
@@ -679,15 +699,25 @@ function Test-Config {
     if ($c.DNS.SecondaryDNS -and -not (Test-IPv4 "$($c.DNS.SecondaryDNS)")) { $errors.Add("DNS.SecondaryDNS : '$($c.DNS.SecondaryDNS)'") }
     if ($c.Directory) {
         $roles = @($c.Directory.Roles | ForEach-Object { $_.Name })
-        $seen = @{}
         foreach ($u in @($c.Directory.Users)) {
             if (-not $u.Username) { $errors.Add("Directory.Users : $(T 'u.username') ?"); continue }
             if ($seen.ContainsKey($u.Username)) { $errors.Add("Directory.Users : '$($u.Username)' x2") }
             $seen[$u.Username] = 1
             if ($roles -notcontains $u.Role) { $errors.Add("Directory.Users : '$($u.Username)' -> $(T 'u.role') '$($u.Role)' ?") }
+            # Same rule as step 8: no shared initial password on an account that never changes it.
+            if ($u.ChangePasswordAtLogon -eq $false -and -not $u.Password) { $errors.Add("Directory.Users : '$($u.Username)' -> $(T 'cfg.needOwnPwd')") }
         }
         if (-not $c.Directory.InitialPassword) { $errors.Add("Directory.InitialPassword : (vide / empty)") }
     }
+    if ($c.Policy.ServerRemoteDesktop.Enabled -eq $true) {
+        foreach ($n in @($c.Policy.ServerRemoteDesktop.Users)) {
+            if ($n -and -not $seen.ContainsKey($n)) { $errors.Add("Policy.ServerRemoteDesktop.Users : '$n' $(T 'cfg.notInUsers')") }
+        }
+    }
+    if ($c.Policy.AlwaysOn.Enabled -eq $true -and @($c.Directory.ComputerSubOUs) -notcontains $c.Policy.AlwaysOn.SubOU) {
+        $errors.Add("Policy.AlwaysOn.SubOU : '$($c.Policy.AlwaysOn.SubOU)' $(T 'cfg.notInSubOUs')")
+    }
+    if ($c.DHCP.Configure -eq $true -or $c.DHCP.Enabled -eq $true) { $errors.Add("DHCP.Configure : $(T 'cfg.dhcpConfigure')") }
     # Numbers typed as text.
     foreach ($path in $script:Kinds.Keys) {
         if ($script:Kinds[$path] -ne 'num' -or $path -like '*`[`]*') { continue }
@@ -719,7 +749,29 @@ $ui.SectionList.add_SelectionChanged({ Invoke-Logged 'SectionList.SelectionChang
     $item = $ui.SectionList.SelectedItem
     if ($item) { Show-Section $item.Tag }
 } })
-$ui.CfgReload.add_Click({ Invoke-Logged 'CfgReload.Click' { $script:Grids = @(); Import-Config } })
+# Config file picker: config.json (production) or another config*.json next to it
+# (e.g. config.lab.json). Edit, save and deploy all use the selected file.
+function Update-ConfigFiles {
+    $names = @(Get-ChildItem $Root -Filter 'config*.json' -File | Where-Object { $_.Extension -eq '.json' -and $_.Name -ne 'config.sample.json' } | ForEach-Object { $_.Name })
+    if ($names -notcontains 'config.json') { $names = @('config.json') + $names }
+    $script:FillingFiles = $true
+    try {
+        $ui.CfgFile.Items.Clear()
+        foreach ($n in $names) { [void]$ui.CfgFile.Items.Add($n) }
+        $ui.CfgFile.SelectedItem = Split-Path $script:ConfigPath -Leaf
+    }
+    finally { $script:FillingFiles = $false }
+}
+$ui.CfgFile.add_SelectionChanged({
+    if ($script:FillingFiles -or -not $ui.CfgFile.SelectedItem) { return }
+    Invoke-Logged "CfgFile $($ui.CfgFile.SelectedItem)" {
+        Save-Grids
+        $script:ConfigPath = Join-Path $Root $ui.CfgFile.SelectedItem
+        $script:Grids = @()
+        Import-Config
+    }
+})
+$ui.CfgReload.add_Click({ Invoke-Logged 'CfgReload.Click' { $script:Grids = @(); Update-ConfigFiles; Import-Config } })
 $ui.CfgSave.add_Click({ Invoke-Logged 'CfgSave.Click' { Save-Config } })
 
 # ============================================================
@@ -789,10 +841,11 @@ function Update-Deploy {
 
 $ui.DepStart.add_Click({ Invoke-Logged 'DepStart.Click' {
     if (-not (Test-Path $ConfigPath)) { Show-Message (T 'dep.noConfig') 'Warning' | Out-Null; return }
-    if ((Show-Message (T 'dep.confirm') 'Question' 'YesNo') -ne 'Yes') { return }
+    if ((Show-Message ((T 'dep.file') + (Split-Path $ConfigPath -Leaf) + "`n`n" + (T 'dep.confirm')) 'Question' 'YesNo') -ne 'Yes') { return }
+    # -NonInteractive: the window is hidden, so a command asking a question must fail, not wait forever.
     $script:DeployProc = Start-Process powershell.exe -WindowStyle Hidden -WorkingDirectory $Root -PassThru `
-        -ArgumentList "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$DeployScript`""
-    Write-GuiLog "Deploy   : started Deploy.ps1, PID $($script:DeployProc.Id)"
+        -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$DeployScript`" -Config `"$ConfigPath`""
+    Write-GuiLog "Deploy   : started Deploy.ps1 -Config $ConfigPath, PID $($script:DeployProc.Id)"
     Update-Deploy
 } })
 $ui.DepReset.add_Click({ Invoke-Logged 'DepReset.Click' {
@@ -985,7 +1038,7 @@ $ui.Tabs.add_SelectionChanged({
 })
 $ui.LangBox.add_SelectionChanged({ Invoke-Logged 'LangBox.SelectionChanged' { Set-Language $ui.LangBox.SelectedIndex } })
 
-Invoke-Logged 'Startup: load config' { Import-Config }
+Invoke-Logged 'Startup: load config' { Update-ConfigFiles; Import-Config }
 Invoke-Logged 'Startup: language' -Quiet { Set-Language 0 }
 if ($env:NVINST_GUI_NOSHOW) { return }   # test hook: build the window without showing it
 Write-GuiLog 'Window   : shown'

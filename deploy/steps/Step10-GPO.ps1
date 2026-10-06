@@ -14,6 +14,14 @@
 #     the local Administrators group (Restricted Groups).
 #     Mode "Exclusive" = Administrators contains ONLY GG-PC-Admins + ExtraMembers
 #     (spec); Mode "Add" = GG-PC-Admins is added, existing members stay.
+#  E) Always-on GPO (linked to a sub-OU of Postes, e.g. Postes\Technicien):
+#     never lock, never sleep, screen always on. A GPO linked closer to the
+#     computer wins, so it overrides C for the PCs in that sub-OU.
+#  F) Remote Desktop to the domain controllers for named non-admin users:
+#     they join BUILTIN\Remote Desktop Users, and that group gets "Allow log
+#     on through Remote Desktop Services" in the Default Domain Controllers
+#     Policy (by default only Administrators have it on a DC). Without the
+#     RDS role, Windows Server allows 2 simultaneous sessions.
 # Turning a section off later does NOT revert what an earlier run applied.
 # Exit: 0 = ok, 1 = error
 # ----------------------
@@ -27,7 +35,7 @@ Assert-Administrator
 Write-Log "STEP 10: Security policy and workstation GPOs" "STEP"
 
 $DefaultDomainPolicyId = "31B2F340-016D-11D2-945F-00C04FB984F9"
-$SecurityCse           = "[{827D319E-6EAC-11D2-A4EA-00C04F79F83A}{803E14A0-B4FB-11D0-A0D0-00A0C90F574B}]"
+$DefaultDCPolicyId     = "6AC1786C-016F-11D2-945F-00C04FB984F9"
 $InfHeader = @('[Unicode]', 'Unicode=yes', '[Version]', 'signature="$CHICAGO$"', 'Revision=1')
 
 # ------------------------------------------------------------
@@ -35,40 +43,6 @@ $InfHeader = @('[Unicode]', 'Unicode=yes', '[Version]', 'signature="$CHICAGO$"',
 # ------------------------------------------------------------
 function Test-On { param($Section) return ($Section -and $Section.Enabled -eq $true) }
 function Test-Set { param($Value) return ($null -ne $Value -and "$Value" -ne "") }
-
-function Get-GpoAdObject {
-    param([string]$Id)
-    $dn = "CN={$Id},CN=Policies,CN=System,$((Get-ADDomain).DistinguishedName)"
-    return Get-ADObject -Identity $dn -Properties versionNumber, gPCFileSysPath, gPCMachineExtensionNames
-}
-
-function Get-GpoInfPath {
-    param([string]$Id)
-    $o = Get-GpoAdObject -Id $Id
-    return Join-Path $o.gPCFileSysPath "Machine\Microsoft\Windows NT\SecEdit\GptTmpl.inf"
-}
-
-# A GPO edited outside GPMC must get its machine version bumped (AD + GPT.INI)
-# and list the Security CSE, or clients never notice the change.
-function Update-GpoMachineVersion {
-    param([string]$Id)
-    $o = Get-GpoAdObject -Id $Id
-
-    $ext   = "$($o.gPCMachineExtensionNames)"
-    $pairs = @([regex]::Matches($ext, '\[[^\]]+\]') | ForEach-Object { $_.Value })
-    if ($pairs -notcontains $SecurityCse) {
-        $pairs = @($pairs + $SecurityCse | Sort-Object)
-        Set-ADObject -Identity $o.DistinguishedName -Replace @{ gPCMachineExtensionNames = ($pairs -join '') }
-    }
-
-    $new = [int]$o.versionNumber + 1
-    Set-ADObject -Identity $o.DistinguishedName -Replace @{ versionNumber = $new }
-    $gptIni = Join-Path $o.gPCFileSysPath "GPT.INI"
-    $ini = if (Test-Path $gptIni) { Get-Content $gptIni -Raw } else { "[General]`r`n" }
-    if ($ini -match '(?m)^Version=\d+') { $ini = $ini -replace '(?m)^Version=\d+', "Version=$new" }
-    else { $ini = $ini.TrimEnd() + "`r`nVersion=$new`r`n" }
-    Set-Content -Path $gptIni -Value $ini -Encoding ASCII -NoNewline
-}
 
 # Merge key = value pairs into one [Section] of a GptTmpl.inf (UTF-16).
 # Returns $true when the file changed.
@@ -269,6 +243,78 @@ try {
         }
     }
     else { Write-Log "Local-admins GPO: disabled in config - workstations keep their standard Administrators group." "INFO" }
+
+    # ========================================================
+    # E) Always-on GPO -> sub-OU of Postes (e.g. Technicien)
+    # ========================================================
+    $ao = $policy.AlwaysOn
+    if (Test-On $ao) {
+        $name  = if ($ao.GpoName) { $ao.GpoName } else { "Postes-Techniciens" }
+        $subOU = if ($ao.SubOU) { $ao.SubOU } else { "Technicien" }
+        $target = "OU=$subOU,$postesDN"
+        if (-not (Get-ADOrganizationalUnit -Filter "DistinguishedName -eq '$target'" -ErrorAction SilentlyContinue)) {
+            Write-Log "$target does not exist - add '$subOU' to Directory.ComputerSubOUs and run step 6." "ERROR"
+            exit 1
+        }
+        $null = Confirm-GpoLinked -Name $name -TargetDN $target
+        $sys = "HKLM\Software\Microsoft\Windows\CurrentVersion\Policies\System"
+        $pwr = "HKLM\Software\Policies\Microsoft\Power\PowerSettings"
+
+        # 0 = no inactivity lock (overrides LockAfterMinutes from C).
+        Set-GpoDword -Name $name -Key $sys -ValueName "InactivityTimeoutSecs" -Value 0
+        # 0 = never: sleep, hibernate, turn off the display. No sleep -> no password on wake.
+        foreach ($guid in '29F6C1DB-86DA-48C5-9FDB-F2B67B1F44DA',   # sleep
+                          '9D7815A6-7EE4-497E-8888-515A05F02364',   # hibernate
+                          '3C0BC021-C8A8-4E07-A973-6B14CBCB2B7E',   # display off
+                          '0e796bdb-100d-47d6-a2d5-f7d2daa51f51') { # password on wake
+            Set-GpoDword -Name $name -Key "$pwr\$guid" -ValueName "ACSettingIndex" -Value 0
+            Set-GpoDword -Name $name -Key "$pwr\$guid" -ValueName "DCSettingIndex" -Value 0
+        }
+        Write-Log "$($name) on $($target): never lock, never sleep, screen always on." "OK"
+    }
+    else { Write-Log "Always-on GPO: disabled in config - not created." "INFO" }
+
+    # ========================================================
+    # F) Remote Desktop to the domain controllers
+    # ========================================================
+    $rdp = $policy.ServerRemoteDesktop
+    if (Test-On $rdp) {
+        $rdu = Get-ADGroup -Identity "S-1-5-32-555" -ErrorAction Stop   # BUILTIN\Remote Desktop Users, any language
+        foreach ($u in @($rdp.Users)) {
+            if ([string]::IsNullOrWhiteSpace($u)) { continue }
+            if (-not (Get-ADUser -Filter "SamAccountName -eq '$u'" -ErrorAction SilentlyContinue)) {
+                Write-Log "ServerRemoteDesktop: user '$u' not found (add it to Directory.Users, step 8)." "ERROR"
+                exit 1
+            }
+            if (Get-ADGroupMember -Identity $rdu -ErrorAction Stop | Where-Object { $_.SamAccountName -ieq $u }) {
+                Write-Log "'$u' already in $($rdu.Name)." "INFO"
+            }
+            else {
+                Add-ADGroupMember -Identity $rdu -Members $u -ErrorAction Stop
+                Write-Log "'$u' added to $($rdu.Name)." "OK"
+            }
+        }
+
+        # Keep whatever the policy already grants, add Administrators + Remote Desktop Users.
+        $inf  = Get-GpoInfPath -Id $DefaultDCPolicyId
+        $have = @()
+        if (Test-Path $inf) {
+            $line = Get-Content $inf -Encoding Unicode | Where-Object { $_ -match '^\s*SeRemoteInteractiveLogonRight\s*=' } | Select-Object -First 1
+            if ($line) { $have = @(($line -split '=', 2)[1].Split(',') | ForEach-Object { $_.Trim() } | Where-Object { $_ }) }
+        }
+        $want = @($have)
+        foreach ($sid in '*S-1-5-32-544', '*S-1-5-32-555') { if ($want -notcontains $sid) { $want += $sid } }
+        $rights = [ordered]@{ SeRemoteInteractiveLogonRight = ($want -join ',') }
+        if (Set-InfValues -Path $inf -Section "Privilege Rights" -Values $rights) {
+            Update-GpoMachineVersion -Id $DefaultDCPolicyId
+            $null = gpupdate.exe /target:computer /force
+            Write-Log "Default Domain Controllers Policy: Remote Desktop logon = $($want -join ',') (applied now)." "OK"
+        }
+        else {
+            Write-Log "Default Domain Controllers Policy already allows Remote Desktop Users." "OK"
+        }
+    }
+    else { Write-Log "Server Remote Desktop for users: disabled in config - only administrators can RDP to the DC." "INFO" }
 
     Write-Log "Security policy and GPOs done. Workstations pick them up at the next gpupdate / reboot." "OK"
     exit 0
